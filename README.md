@@ -6,10 +6,6 @@ true-scale flat map of the skin, so flat tattoo designs can be placed on the bod
 A Python pipeline takes a real skeleton and muscles (Z-Anatomy / BodyParts3D) and grows fat and skin over them. It
 then rigs the body so it bends naturally and flattens the skin into a 2D map. The web app (three.js) renders the
 result and lets you pose it live.
-
-📖 **[How it works](docs/how-it-works.html)**: a plain-language guide, with a 15-lesson Python course you can run
-in the page. Download it, or open it on the live site, to view it; GitHub only shows the code.
-
 ---
 
 ## Quick start
