@@ -1,0 +1,1739 @@
+<title>Inside the Tattoo Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: an anatomy-atlas notebook. Sticky chapter rail on the left, one reading column, wide figures.
+   Teal = the Python build side, amber = the browser side, crimson = muscle/accent. */
+:root {
+  --bg: #f3f5f7;
+  --surface: #ffffff;
+  --sunk: #e8ecf0;
+  --ink: #17212b;
+  --muted: #5a6875;
+  --line: #d3dae1;
+  --accent: #b3264a;
+  --py: #0f7a75;
+  --py-soft: #d9efed;
+  --js: #a8640a;
+  --js-soft: #f6e8d2;
+  --code-bg: #0f1820;
+  --code-fg: #dfe7ee;
+  --good: #2c7a3f;
+  --bad: #b3264a;
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1419; --surface: #151d24; --sunk: #1c262f; --ink: #e3e9ee; --muted: #93a2ae; --line: #2a3742;
+    --accent: #ef5d82; --py: #4cc4bb; --py-soft: #12322f; --js: #f0a940; --js-soft: #3a2a12;
+    --code-bg: #0a0f13; --code-fg: #dfe7ee; --good: #5ec27a; --bad: #ef5d82; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1419; --surface: #151d24; --sunk: #1c262f; --ink: #e3e9ee; --muted: #93a2ae; --line: #2a3742;
+  --accent: #ef5d82; --py: #4cc4bb; --py-soft: #12322f; --js: #f0a940; --js-soft: #3a2a12;
+  --code-bg: #0a0f13; --code-fg: #dfe7ee; --good: #5ec27a; --bad: #ef5d82; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 80px;
+  display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px; }
+@media (max-width: 860px) { .wrap { grid-template-columns: minmax(0, 1fr); gap: 20px; padding-inline: 16px; } }
+
+/* chapter rail */
+nav.rail { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; }
+nav.rail .brand { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: .02em; margin-bottom: 14px; }
+nav.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: ch; }
+nav.rail a { display: flex; gap: 10px; align-items: baseline; padding: 6px 10px; border-radius: 6px; color: var(--muted);
+  text-decoration: none; font-size: 14px; }
+nav.rail a::before { counter-increment: ch; content: counter(ch); font-family: var(--mono); font-size: 12px; min-width: 14px; }
+nav.rail a:hover, nav.rail a:focus-visible { background: var(--sunk); color: var(--ink); outline: none; }
+nav.rail a.on { color: var(--ink); background: var(--surface); box-shadow: inset 2px 0 0 var(--accent); }
+nav.rail a .done { margin-left: auto; color: var(--good); font-size: 12px; }
+@media (max-width: 860px) {
+  nav.rail { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 8px;
+    margin-inline: -16px; padding-inline: 16px; border-bottom: 1px solid var(--line); }
+  nav.rail .brand { display: none; }
+  nav.rail ol { display: flex; overflow-x: auto; gap: 4px; scrollbar-width: none; }
+  nav.rail a { white-space: nowrap; }
+}
+
+main { min-width: 0; }
+section.ch { padding-block: 8px 40px; border-bottom: 1px solid var(--line); margin-bottom: 36px; scroll-margin-top: 70px; }
+section.ch:last-of-type { border-bottom: none; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(34px, 5vw, 54px); font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: clamp(26px, 3.2vw, 34px); font-weight: 700; margin-bottom: 14px; }
+h3 { font-size: 20px; font-weight: 700; margin: 26px 0 8px; }
+p, li { max-width: 68ch; }
+p { margin: 0 0 14px; }
+.lede { font-size: 19px; color: var(--muted); max-width: 60ch; margin-top: 14px; }
+a { color: var(--accent); }
+code { font-family: var(--mono); font-size: .88em; background: var(--sunk); padding: 1px 5px; border-radius: 4px; }
+.py { color: var(--py); } .js { color: var(--js); }
+.tag { display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px; font-weight: 500; }
+.tag.py { background: var(--py-soft); } .tag.js { background: var(--js-soft); }
+
+/* stats */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin: 26px 0 8px; }
+.stat { background: var(--surface); padding: 14px 16px; }
+.stat b { display: block; font-family: var(--display); font-size: 26px; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 13px; color: var(--muted); }
+.asof { font-size: 13px; color: var(--muted); }
+
+/* two halves */
+.halves { display: grid; grid-template-columns: minmax(0, 1fr) 54px minmax(0, 1fr); align-items: stretch; margin: 22px 0; }
+.half { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
+.half.pyh { border-top: 3px solid var(--py); } .half.jsh { border-top: 3px solid var(--js); }
+.half h3 { margin-top: 6px; }
+.half ul { padding-left: 18px; margin: 8px 0 0; }
+.arrow { display: grid; place-items: center; color: var(--muted); font-family: var(--mono); font-size: 12px; text-align: center; }
+.arrow svg { width: 40px; height: 24px; }
+@media (max-width: 700px) { .halves { grid-template-columns: minmax(0, 1fr); } .arrow { padding: 8px 0; } .arrow svg { transform: rotate(90deg); } }
+
+/* tables */
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); margin: 16px 0; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--sunk); }
+tr:last-child td { border-bottom: none; }
+td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* stepper */
+.stepper { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 0; border: 1px solid var(--line);
+  border-radius: 10px; overflow: hidden; background: var(--surface); margin: 18px 0; }
+.steps { list-style: none; margin: 0; padding: 6px; background: var(--sunk); display: grid; gap: 2px; align-content: start; max-height: 640px; overflow-y: auto; }
+.steps button { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; width: 100%;
+  padding: 8px 10px; border-radius: 6px; cursor: pointer; font-size: 14px; line-height: 1.35; color: var(--muted); }
+.steps button .n { font-family: var(--mono); font-size: 12px; padding-top: 1px; }
+.steps button:hover { color: var(--ink); background: color-mix(in srgb, var(--surface) 60%, transparent); }
+.steps button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.steps button[aria-selected="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: inset 3px 0 0 var(--side, var(--accent)); }
+.detail { padding: 20px 22px; min-width: 0; }
+.detail .where { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.detail h3 { margin-top: 2px; }
+.detail .why { border-left: 2px solid var(--line); padding-left: 12px; color: var(--muted); }
+.detail .nav { display: flex; gap: 8px; margin-top: 16px; }
+@media (max-width: 760px) { .stepper { grid-template-columns: minmax(0, 1fr); } .steps { max-height: 220px; } }
+
+/* code */
+pre { margin: 12px 0 16px; background: var(--code-bg); color: var(--code-fg); border-radius: 8px; padding: 14px 16px;
+  overflow-x: auto; font-family: var(--mono); font-size: 13px; line-height: 1.55; }
+pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+.hljs-keyword, .hljs-built_in { color: #f08bab; } .hljs-string { color: #9fd7a3; } .hljs-number, .hljs-literal { color: #f3c37a; }
+.hljs-comment { color: #7f93a3; font-style: italic; } .hljs-title, .hljs-title.function_ { color: #8fc8ff; } .hljs-params { color: #dfe7ee; }
+.codehead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 14px; }
+
+/* buttons */
+.btn { font: 500 14px var(--body); padding: 7px 14px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface);
+  color: var(--ink); cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.small { font-size: 12px; padding: 4px 10px; }
+
+/* demos */
+.demo { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin: 18px 0; }
+.demo canvas { width: 100%; height: auto; display: block; background: var(--sunk); border-radius: 6px; touch-action: none; }
+.controls { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; margin-top: 12px; font-size: 14px; }
+.controls label { display: flex; gap: 8px; align-items: center; }
+.controls input[type=range] { width: 150px; accent-color: var(--accent); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { all: unset; padding: 6px 12px; cursor: pointer; font-size: 13px; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.readout { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; margin-left: auto; }
+.readout .good { color: var(--good); } .readout .bad { color: var(--bad); }
+.caption { font-size: 14px; color: var(--muted); margin-top: 10px; }
+
+/* frame loop */
+.loop { counter-reset: f; list-style: none; padding: 0; margin: 16px 0; display: grid; gap: 8px; }
+.loop li { counter-increment: f; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; max-width: none; }
+.loop li::before { content: counter(f); font-family: var(--mono); font-size: 13px; color: var(--js); padding-top: 2px; }
+.loop li b { display: block; }
+.loop li span { color: var(--muted); font-size: 14px; }
+.loop li code { font-size: 12px; }
+
+/* prompts */
+.prompts { display: grid; gap: 12px; margin: 14px 0; }
+.prompt { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.prompt header { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; }
+.prompt header b { font-family: var(--display); font-size: 16px; }
+.prompt pre { margin: 0; white-space: pre-wrap; background: var(--sunk); color: var(--ink); font-size: 13px; }
+.rules { display: grid; gap: 8px; padding: 0; list-style: none; }
+.rules li { padding-left: 22px; position: relative; max-width: 70ch; }
+.rules li::before { content: ""; position: absolute; left: 4px; top: .62em; width: 8px; height: 8px; border-radius: 2px; background: var(--accent); }
+
+/* glossary */
+dl.gloss { display: grid; grid-template-columns: minmax(0, 190px) minmax(0, 1fr); gap: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+dl.gloss dt, dl.gloss dd { margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+dl.gloss dt { font-weight: 600; background: var(--sunk); }
+dl.gloss dd { color: var(--ink); }
+@media (max-width: 600px) { dl.gloss { grid-template-columns: minmax(0, 1fr); } dl.gloss dt { border-bottom: none; padding-bottom: 2px; } }
+.gfilter { width: 100%; max-width: 360px; font: 15px var(--body); padding: 8px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink); margin-bottom: 12px; }
+
+/* roadmap */
+.road { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 18px 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; min-width: 0; }
+.card.wide { grid-column: 1 / -1; }
+.card header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.card h3 { margin: 0; }
+.card h4 { font-family: var(--display); font-size: 16px; margin: 8px 0 4px; }
+.card .meta { font-size: 13px; color: var(--muted); margin: 6px 0 10px; }
+.card ul, .card ol { padding-left: 20px; margin: 6px 0 12px; }
+.card li { margin-bottom: 4px; }
+.pill { font-family: var(--mono); font-size: 11px; letter-spacing: .05em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+.pill.done { background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good); }
+.pill.plan { background: color-mix(in srgb, var(--js) 18%, transparent); color: var(--js); }
+.cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.cols.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.cols > div { min-width: 0; }
+.flow li { max-width: none; }
+@media (max-width: 760px) { .road, .cols, .cols.three { grid-template-columns: minmax(0, 1fr); } }
+
+.readbox { display: flex; gap: 10px; align-items: center; margin-top: 18px; font-size: 14px; color: var(--muted); }
+.readbox input { accent-color: var(--good); width: 18px; height: 18px; }
+/* start paths */
+.paths { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0 10px; }
+.pathcard { display: grid; gap: 6px; align-content: start; background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 16px; color: var(--ink); text-decoration: none; }
+.pathcard:hover, .pathcard:focus-visible { border-color: var(--accent); outline: none; }
+.pathcard b { font-family: var(--display); font-size: 17px; }
+.pathcard span:last-child { font-size: 14px; color: var(--muted); }
+.pathcard .tag { justify-self: start; background: var(--sunk); }
+@media (max-width: 760px) { .paths { grid-template-columns: minmax(0, 1fr); } }
+
+/* python course */
+.howto { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+.howto div { background: var(--py-soft); border-radius: 10px; padding: 12px 14px; display: grid; gap: 4px; font-size: 14px; }
+.howto b { font-size: 15px; }
+@media (max-width: 760px) { .howto { grid-template-columns: minmax(0, 1fr); } }
+.progress { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; font-size: 14px; color: var(--muted); margin: 6px 0 14px; }
+.progress b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.progress .bar { flex: 1 1 200px; height: 8px; background: var(--sunk); border-radius: 999px; overflow: hidden; }
+.progress .bar span { display: block; height: 100%; width: 0; background: var(--good); transition: width .3s; }
+.units { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 10px; }
+.unit { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+.unit h4 { font-family: var(--display); font-size: 15px; margin: 0 0 6px; }
+.unit h4 span, .unithead span { font-family: var(--mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--py); margin-right: 6px; }
+.unit ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.unit li { display: flex; gap: 8px; align-items: baseline; max-width: none; }
+.unit a { color: var(--ink); text-decoration: none; font-size: 14px; display: flex; gap: 8px; flex: 1; padding: 3px 0; }
+.unit a:hover { color: var(--accent); }
+.unit a .n { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.ldone { color: var(--good); font-size: 12px; }
+@media (max-width: 760px) { .units { grid-template-columns: minmax(0, 1fr); } }
+.unithead { margin-top: 36px; font-size: 24px; }
+.lesson { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--py); border-radius: 10px;
+  padding: 18px 20px; margin: 16px 0 22px; min-width: 0; scroll-margin-top: 70px; }
+.lesson > header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; margin-bottom: 10px; }
+.lesson > header h3 { margin: 0; flex: 1 1 260px; }
+.lnum { font-family: var(--mono); font-size: 12px; color: var(--py); letter-spacing: .06em; text-transform: uppercase; }
+ul.notes { list-style: none; padding: 0; margin: 10px 0 14px; display: grid; gap: 8px; }
+ul.notes li { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 12px; max-width: none; font-size: 15px; }
+ul.notes li > code { align-self: start; white-space: pre-wrap; word-break: break-word; }
+@media (max-width: 700px) { ul.notes li { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+.anywhere { border-left: 3px solid var(--accent); background: var(--sunk); border-radius: 0 8px 8px 0; padding: 10px 14px; margin: 14px 0; }
+.anywhere p { margin: 0 0 8px; } .anywhere p:last-child { margin: 0; }
+.try { border: 1px dashed var(--py); border-radius: 10px; padding: 14px; margin-top: 14px; }
+.tryhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.tryhead b { font-family: var(--display); font-size: 17px; color: var(--py); }
+.hint { font-size: 12px; color: var(--muted); }
+kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--surface); }
+textarea.pyedit { width: 100%; min-height: 160px; resize: vertical; font-family: var(--mono); font-size: 13px; line-height: 1.55;
+  background: var(--code-bg); color: var(--code-fg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; tab-size: 4; }
+textarea.pyedit:focus-visible { outline: 2px solid var(--py); outline-offset: 1px; }
+.trybar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.trybar .btn.primary { background: var(--py); border-color: var(--py); }
+.pystatus { font-size: 13px; color: var(--muted); }
+pre.pyout { background: var(--sunk); color: var(--ink); white-space: pre-wrap; margin: 10px 0 0; max-height: 320px; overflow: auto; }
+pre.pyout .pass { color: var(--good); font-weight: 600; } pre.pyout .fail { color: var(--bad); font-weight: 600; }
+.lesson .readbox { margin-top: 12px; }
+
+/* ideas */
+.ideas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 18px 0; }
+.idea { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; min-width: 0; }
+.idea h3 { margin: 4px 0 8px; font-size: 18px; }
+.idea p { font-size: 15px; margin-bottom: 8px; }
+.inum { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+@media (max-width: 760px) { .ideas { grid-template-columns: minmax(0, 1fr); } }
+.pill.drop { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <nav class="rail" aria-label="Chapters">
+    <div class="brand">Inside the Tattoo Planner</div>
+    <ol id="toc">
+      <li><a href="#halves">Two halves</a></li>
+      <li><a href="#files">The files</a></li>
+      <li><a href="#python">Python course</a></li>
+      <li><a href="#build">Building in Python</a></li>
+      <li><a href="#browser">Playing in the browser</a></li>
+      <li><a href="#skinning">Bones and weights</a></li>
+      <li><a href="#voxels">Skin from voxels</a></li>
+      <li><a href="#packing">Packing the data</a></li>
+      <li><a href="#patterns">Code patterns</a></li>
+      <li><a href="#ideas">Ideas to reuse</a></li>
+      <li><a href="#changing">What's new</a></li>
+      <li><a href="#claude">Working with Claude</a></li>
+      <li><a href="#glossary">Glossary</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header style="padding-block: 4px 30px; border-bottom: 1px solid var(--line); margin-bottom: 36px;">
+      <p class="eyebrow">A guided tour of the code · and a Python course built from it</p>
+      <h1>Inside the Tattoo Planner</h1>
+      <p class="lede">How a folder of Python and one HTML page turn a real skeleton and its muscles into a posable 3D body. Use it two ways: to understand this project well enough to steer it, and to learn Python and engineering ideas from real code you can reuse on any other project.</p>
+      <div class="stats">
+        <div class="stat"><b>80</b><span>rig bones (incl. twist knots)</span></div>
+        <div class="stat"><b>80,531</b><span>skin points</span></div>
+        <div class="stat"><b>260,241</b><span>muscle points</span></div>
+        <div class="stat"><b>78,318</b><span>bone points</span></div>
+        <div class="stat"><b>4,708</b><span>lines of Python in tools/</span></div>
+      </div>
+      <div class="paths">
+        <a class="pathcard" href="#python"><span class="tag py">Learn Python</span><b>Start with the Python course</b><span>13 short lessons, each built on a real snippet from tools/, with exercises you can run right here in the page.</span></a>
+        <a class="pathcard" href="#halves"><span class="tag js">Understand the project</span><b>Start with the tour</b><span>How the two halves fit, what each file does, and how the body is built and posed.</span></a>
+        <a class="pathcard" href="#ideas"><span class="tag">Reuse elsewhere</span><b>Big ideas for other projects</b><span>Twelve patterns from this code that work in any program you write.</span></a>
+      </div>
+      <p class="asof">Counts read from body-rig.js (built 23 Oct 2026) on 4 Nov 2026. The project changes often, so line numbers below are approximate.</p>
+    </header>
+
+    <!-- 1 -->
+    <section class="ch" id="halves">
+      <p class="eyebrow">Chapter 1</p>
+      <h2>Two halves: a slow builder and a fast player</h2>
+      <p>The project is split into two programs that never run at the same time. Python does the heavy, one-off work: reading anatomy, fitting a rig, building skin, working out weights. It writes everything the browser needs into one data file. The browser then only does what has to happen every time you move a joint.</p>
+      <div class="halves">
+        <div class="half pyh">
+          <span class="tag py">Python · build once</span>
+          <h3>tools/fit_rig.py and friends</h3>
+          <p style="margin:0">Runs in the terminal and takes about a minute or more. Uses <b>numpy</b> (fast maths on big arrays) and sometimes <b>scipy</b> and <b>libigl</b>.</p>
+          <ul>
+            <li>Reads the Z-Anatomy skeleton and muscles</li>
+            <li>Moves a ready-made rig's joints onto the real joints</li>
+            <li>Builds fat and skin around the muscles</li>
+            <li>Works out how much each bone moves each point</li>
+          </ul>
+        </div>
+        <div class="arrow" aria-hidden="true">
+          <div><svg viewBox="0 0 40 24"><path d="M2 12h32M26 4l8 8-8 8" fill="none" stroke="currentColor" stroke-width="2"/></svg><br>body-rig.js</div>
+        </div>
+        <div class="half jsh">
+          <span class="tag js">Browser · every pose</span>
+          <h3>index.html</h3>
+          <p style="margin:0">Opened in Chrome. Uses <b>three.js</b> (a 3D drawing library loaded from the internet) and plain JavaScript.</p>
+          <ul>
+            <li>Turns the data back into 3D meshes</li>
+            <li>Lets you drag body parts, within real joint limits</li>
+            <li>Moves muscles, fat and skin with the bones</li>
+            <li>Keeps them out of the bones and each other</li>
+          </ul>
+        </div>
+      </div>
+      <p>The data file is the contract between the two halves. <code>fit_rig.py</code> ends by writing <code>window.BODY_RIG = {…}</code>, and <code>index.html</code> loads it with a plain <code>&lt;script src="body-rig.js"&gt;</code>. Because it's a script, not a fetched file, the page works when opened straight from disk (<code>file://</code>) with no web server.</p>
+      <p><b>Why it matters to you:</b> if a change is about the body's <em>shape at rest</em>, such as fat, skin thickness, the face or the hands, it belongs in Python and needs a rebuild. If it's about <em>how things move</em>, such as joint limits, collisions or presets, it's usually in <code>index.html</code>, and a browser refresh shows it.</p>
+      <label class="readbox"><input type="checkbox" data-read="halves"> I've read this chapter</label>
+    </section>
+
+    <!-- 2 -->
+    <section class="ch" id="files">
+      <p class="eyebrow">Chapter 2</p>
+      <h2>The files and what each one does</h2>
+      <p>Everything lives in <code>~/Desktop/tattoo-planner</code>. Files you edit are on top; files that programs write are below them.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>File</th><th>Side</th><th>Lines</th><th>Job</th></tr></thead>
+        <tbody>
+          <tr><td><code>tools/convert_fbx.py</code></td><td><span class="tag py">Python</span></td><td class="num">85</td><td>Turns the Z-Anatomy <code>.fbx</code> files into a simple binary <code>.meshes</code> format. It borrows three.js's FBX reader by starting a tiny local web server and opening a hidden Chrome window.</td></tr>
+          <tr><td><code>tools/meshes.py</code></td><td><span class="tag py">Python</span></td><td class="num">18</td><td>Reads a <code>.meshes</code> file back into (name, points, triangles) for each part.</td></tr>
+          <tr><td><code>tools/fit_rig.py</code></td><td><span class="tag py">Python</span></td><td class="num">3,252</td><td>The main builder: rig, skeleton, muscles, fat, skin, weights, collision data, muscle contraction data. Writes <code>body-rig.js</code>.</td></tr>
+          <tr><td><code>tools/envelope.py</code></td><td><span class="tag py">Python</span></td><td class="num">188</td><td>Builds a smooth surface around a cloud of points: fill voxels, grow them by a layer, blur, then extract the surface (surface nets).</td></tr>
+          <tr><td><code>tools/mh_parts.py</code></td><td><span class="tag py">Python</span></td><td class="num">546</td><td>Fits the MakeHuman hands, feet and head onto our anatomy: line up landmarks, warp smoothly, nudge out of the bones, then bridge each part onto the body.</td></tr>
+          <tr><td><code>tools/tissue_depth.py</code></td><td><span class="tag py">Python</span></td><td class="num">68</td><td>Reads published forensic measurements (the C-Table CSV) and works out average face soft-tissue depths for the head fit. The friendliest file to learn from.</td></tr>
+          <tr><td><code>tools/uv_atlas.py</code></td><td><span class="tag py">Python</span></td><td class="num">551</td><td>Cuts the skin into regions and flattens them into the true-scale skin map for tattoo designs.</td></tr>
+          <tr><td><code>index.html</code></td><td><span class="tag js">Browser</span></td><td class="num">2,263</td><td>The app: scene, lights, posing, skinning, muscle contraction, collisions, layers, buttons.</td></tr>
+          <tr><td><code>body-rig.js</code></td><td>generated</td><td class="num">20 MB</td><td>All bones, meshes, weights and lookup grids, packed compactly as text (was 44 MB before 4 Nov).</td></tr>
+          <tr><td><code>skin-uv.js</code>, <code>skin-map.js</code>, <code>skin-map.png</code></td><td>generated</td><td class="num">≈5 MB</td><td>The skin map: seams and UVs, a grid texture, and a printable template.</td></tr>
+          <tr><td><code>anatomy-src/</code>, <code>assets/</code></td><td>inputs</td><td class="num">–</td><td>Z-Anatomy and BodyParts3D anatomy, the CC0 base mesh (used only for its rig), the MakeHuman base mesh (<code>assets/makehuman/</code>) the face tissue-depth table (<code>assets/tissue-depth/</code>) and ANSUR II body measurements of US Army personnel (<code>assets/ansur2/</code>), used to size the wrists, ankles and neck.</td></tr>
+          <tr><td><code>.venv/</code></td><td>tooling</td><td class="num">–</td><td>A private Python install with scipy, libigl and pillow, used by <code>uv_atlas.py</code>.</td></tr>
+        </tbody>
+      </table></div>
+      <h3>How to rebuild</h3>
+      <div class="codehead"><span>Terminal · from the project folder</span><button class="btn small" data-copy="cmd1">Copy</button></div>
+      <pre id="cmd1"><code>python3 -I tools/fit_rig.py anatomy-src assets/male_base_mesh.glb .
+.venv/bin/python tools/uv_atlas.py .</code></pre>
+      <p>The first line rebuilds the body; the second rebuilds the skin map so it matches. If you skip the second, the page notices the mismatch and quietly leaves the map off. Then refresh Chrome.</p>
+      <label class="readbox"><input type="checkbox" data-read="files"> I've read this chapter</label>
+    </section>
+
+    <!-- course -->
+    <section class="ch" id="python">
+      <p class="eyebrow">Chapter 3 · <span class="py">Python course</span></p>
+      <h2>Learn Python from this project</h2>
+      <p>Fifteen short lessons, each built around a real snippet from <code>tools/</code>. Every lesson has the same four parts: the code as it is in the project, what each piece does, how to use the idea in any other program, and a small exercise you run right here.</p>
+      <div class="howto">
+        <div><b>Do them in order</b><span>Units A and B are plain Python. Unit C is numpy, the library that does maths on whole arrays at once. Unit D puts it together.</span></div>
+        <div><b>Run code in the page</b><span>The first Run downloads Python for the browser (Pyodide, about 10 MB, plus numpy for Unit C), so it needs internet. After that it runs instantly. A check tells you when you've got it.</span></div>
+        <div><b>Or use your terminal</b><span>Copy any exercise into a file and run <code>python3 file.py</code> (or <code>.venv/bin/python file.py</code> from the project, where numpy is installed).</span></div>
+      </div>
+      <div class="progress"><b id="pyProgress">0 of 15</b> lessons done<div class="bar"><span id="pyBar"></span></div></div>
+      <div class="units"><div class="unit"><h4><span>Unit A</span> Python basics</h4><ol><li><a href="#py-1"><span class="n">01</span>Scripts, imports and the command line</a><span class="ldone" data-for="py-1" aria-hidden="true"></span></li><li><a href="#py-2"><span class="n">02</span>Functions, docstrings and default values</a><span class="ldone" data-for="py-2" aria-hidden="true"></span></li><li><a href="#py-3"><span class="n">03</span>Dictionaries, comprehensions and f-strings</a><span class="ldone" data-for="py-3" aria-hidden="true"></span></li><li><a href="#py-4"><span class="n">04</span>Reading messy real-world data</a><span class="ldone" data-for="py-4" aria-hidden="true"></span></li></ol></div><div class="unit"><h4><span>Unit B</span> Files and pipelines</h4><ol><li><a href="#py-5"><span class="n">05</span>Writing files safely</a><span class="ldone" data-for="py-5" aria-hidden="true"></span></li><li><a href="#py-6"><span class="n">06</span>Caching slow work by fingerprint</a><span class="ldone" data-for="py-6" aria-hidden="true"></span></li><li><a href="#py-7"><span class="n">07</span>Binary files: bytes, headers and offsets</a><span class="ldone" data-for="py-7" aria-hidden="true"></span></li></ol></div><div class="unit"><h4><span>Unit C</span> Thinking in arrays (numpy)</h4><ol><li><a href="#py-8"><span class="n">08</span>numpy arrays: shapes, columns and masks</a><span class="ldone" data-for="py-8" aria-hidden="true"></span></li><li><a href="#py-9"><span class="n">09</span>Broadcasting, and doing it in chunks</a><span class="ldone" data-for="py-9" aria-hidden="true"></span></li><li><a href="#py-10"><span class="n">10</span>Adding up by index: np.add.at and bincount</a><span class="ldone" data-for="py-10" aria-hidden="true"></span></li><li><a href="#py-11"><span class="n">11</span>Grouping with np.unique: thinning a mesh on a grid</a><span class="ldone" data-for="py-11" aria-hidden="true"></span></li></ol></div><div class="unit"><h4><span>Unit D</span> Bigger tools</h4><ol><li><a href="#py-12"><span class="n">12</span>Functions that return functions</a><span class="ldone" data-for="py-12" aria-hidden="true"></span></li><li><a href="#py-13"><span class="n">13</span>Regular expressions: picking parts by name</a><span class="ldone" data-for="py-13" aria-hidden="true"></span></li><li><a href="#py-14"><span class="n">14</span>Classes, servers and threads</a><span class="ldone" data-for="py-14" aria-hidden="true"></span></li><li><a href="#py-15"><span class="n">15</span>Graphs: finding the cheapest seam</a><span class="ldone" data-for="py-15" aria-hidden="true"></span></li></ol></div></div>
+      <h3 class="unithead"><span>Unit A</span> Python basics</h3>
+        <article class="lesson" id="py-1">
+          <header><span class="lnum">Lesson 1</span><h3>Scripts, imports and the command line</h3></header>
+          <p>Every tool in <code>tools/</code> is a <b>script</b>: a file Python runs from top to bottom. The first lines bring in other code (<b>imports</b>) and read what you typed after the file name in the terminal (<b>command-line arguments</b>).</p>
+          <div class="codehead"><span>tools/fit_rig.py · top · tools/tissue_depth.py · bottom</span></div>
+          <pre><code class="language-python">import os, sys, re, json, struct, base64, gzip, pickle
+import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from meshes import read_meshes
+
+src, glb_path, out = sys.argv[1:4]
+
+# ... and at the bottom of tools/tissue_depth.py:
+if __name__ == &#x27;__main__&#x27;:
+    import sys
+    for k, (d, n, st) in depths(sys.argv[1]).items():
+        print(f&#x27;{k:4s} {MIDLINE.get(k, BILATERAL.get(k)):24s} {d * 1000:5.1f} mm  ({st}, n={n})&#x27;)</code></pre>
+          <ul class="notes"><li><code>import numpy as np</code><span>Loads a library and gives it a short nickname. Everyone writes <code>np</code> for numpy, so copied examples work.</span></li><li><code>sys.path.insert(0, …)</code><span>Adds the <code>tools/</code> folder to the places Python looks for modules, so <code>from meshes import read_meshes</code> finds <code>tools/meshes.py</code> no matter which folder you run from.</span></li><li><code>sys.argv[1:4]</code><span>The words typed in the terminal, as a list. Item 0 is the script's own name, so <code>[1:4]</code> takes the next three, and <code>src, glb_path, out = …</code> unpacks them into three names in one line.</span></li><li><code>if __name__ == &#x27;__main__&#x27;:</code><span>True only when the file is run directly. <code>fit_rig.py</code> does <code>import tissue_depth</code> and uses its <code>depths()</code> function; the block at the bottom only runs when you type <code>python3 tools/tissue_depth.py file.csv</code> to see the table. One file, two jobs: library and tool.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> put the reusable parts of a script in functions and the "run me" part under <code>if __name__ == '__main__':</code>. Then other scripts, notebooks and tests can import the functions without kicking off the whole program.</p><p><b>Also worth copying:</b> the project keeps its extra libraries (scipy, libigl, pillow) in a private <b>virtual environment</b>, <code>.venv/</code>, created with <code>python3 -m venv .venv</code> and filled with <code>.venv/bin/pip install …</code>. Each project gets its own versions and nothing leaks into the rest of your Mac. The <code>-I</code> in <code>python3 -I</code> ("isolated") stops Python picking up stray modules from the current folder.</p></div>
+          <div class="try" data-n="0">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p><code>uv_atlas.py</code> takes one optional argument: the output folder, defaulting to <code>.</code>. Below, <code>argv</code> stands in for <code>sys.argv</code>. Set <code>out</code> to <code>argv[1]</code> if it was given, or <code>'.'</code> if not, in one line.</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 1 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-1"> I've done this lesson</label>
+        </article>
+        <article class="lesson" id="py-2">
+          <header><span class="lnum">Lesson 2</span><h3>Functions, docstrings and default values</h3></header>
+          <p>A <b>function</b> packages a few lines under a name, takes inputs and hands back a result. <code>tissue_depth.py</code> has two short ones that show nearly everything you need.</p>
+          <div class="codehead"><span>tools/tissue_depth.py</span></div>
+          <pre><code class="language-python">def shorth(v):
+    &quot;&quot;&quot;The mean of the shortest half of the data (Andrews et al. 1972).&quot;&quot;&quot;
+    v = np.sort(v); h = len(v) // 2 + 1
+    k = np.argmin(v[h - 1:] - v[:len(v) - h + 1])
+    return v[k:k + h].mean()
+
+
+def depths(path, sex=&#x27;M&#x27;, min_age=18):
+    &quot;&quot;&quot;{code: (depth in metres, number of people, &#x27;mean&#x27; or &#x27;shorth&#x27;)} for every landmark with data.&quot;&quot;&quot;
+    ...</code></pre>
+          <ul class="notes"><li><code>&quot;&quot;&quot;…&quot;&quot;&quot;</code><span>A <b>docstring</b>: the first string in a function says what it returns. Editors show it when you hover the name. Every function in this project has one, and they describe the result, not the steps.</span></li><li><code>sex=&#x27;M&#x27;, min_age=18</code><span><b>Default values</b>. <code>depths(path)</code> uses adult men; <code>depths(path, min_age=30)</code> changes just one setting by name. Callers only spell out what's different.</span></li><li><code>len(v) // 2 + 1</code><span><code>//</code> is whole-number division: <code>7 // 2</code> is <code>3</code>. Half the data, rounded down, plus one.</span></li><li><code>v[k:k + h]</code><span>A <b>slice</b>: items k up to (not including) k + h. Slices never go out of range; they just stop at the end.</span></li><li><code>return …</code><span>Hands the value back. A function without <code>return</code> gives back <code>None</code>.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> when data has outliers (one typo of 250 mm in a list of 5 mm depths), a plain mean lies. The project uses the <i>shorth</i> for the skewed landmarks. A simpler cousin is the <b>trimmed mean</b>: sort, drop the lowest and highest few, average the rest. Same idea for grades, prices or sensor readings.</p></div>
+          <div class="try" data-n="1">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p>Write <code>trimmed_mean(v, cut=0.1)</code>: sort the values, drop <code>int(len(v) * cut)</code> from each end, and return the mean of what's left. Plain Python is fine: <code>sorted()</code>, slicing, <code>sum()</code> and <code>len()</code>.</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 2 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-2"> I've done this lesson</label>
+        </article>
+        <article class="lesson" id="py-3">
+          <header><span class="lnum">Lesson 3</span><h3>Dictionaries, comprehensions and f-strings</h3></header>
+          <p>A <b>dictionary</b> maps keys to values, like a lookup table. A <b>comprehension</b> builds a list or dictionary in one line. An <b>f-string</b> drops values into text with formatting. All three appear in a few lines of <code>tissue_depth.py</code>.</p>
+          <div class="codehead"><span>tools/tissue_depth.py</span></div>
+          <pre><code class="language-python">MIDLINE = {&#x27;op&#x27;: &#x27;opisthocranion&#x27;, &#x27;v&#x27;: &#x27;vertex&#x27;, &#x27;m&#x27;: &#x27;metopion&#x27;, &#x27;sg&#x27;: &#x27;supraglabella&#x27;, &#x27;g&#x27;: &#x27;glabella&#x27;, ...}
+SKEWED = {&#x27;go&#x27;, &#x27;mr&#x27;, &#x27;me&#x27;, &#x27;sm&#x27;}      # (shorth instead of the mean)
+
+hdr = rows[2]; col = {h: i for i, h in enumerate(hdr) if h}
+
+stat = &#x27;shorth&#x27; if code in SKEWED else &#x27;mean&#x27;
+
+print(f&#x27;{k:4s} {MIDLINE.get(k, BILATERAL.get(k)):24s} {d * 1000:5.1f} mm  ({st}, n={n})&#x27;)</code></pre>
+          <ul class="notes"><li><code>{&#x27;op&#x27;: &#x27;opisthocranion&#x27;, …}</code><span>A dictionary: landmark code → full name. <code>MIDLINE['v']</code> is <code>'vertex'</code>.</span></li><li><code>{&#x27;go&#x27;, &#x27;mr&#x27;, …}</code><span>Curly braces without colons make a <b>set</b>: no order, no repeats, and <code>x in SKEWED</code> is instant even for huge sets.</span></li><li><code>{h: i for i, h in enumerate(hdr) if h}</code><span>A dictionary comprehension. <code>enumerate</code> gives (position, item) pairs; the result maps each column name to its column number, skipping blank names. After that, <code>r[col['Sex']]</code> reads the Sex column without hard-coding "column 7".</span></li><li><code>a if cond else b</code><span>A one-line if/else that produces a value.</span></li><li><code>.get(k, default)</code><span>Like <code>[k]</code>, but returns the default instead of crashing when the key is missing.</span></li><li><code>{d * 1000:5.1f}</code><span>Inside an f-string, anything after <code>:</code> is a format: <code>5.1f</code> means 5 characters wide, 1 decimal. <code>24s</code> pads text to 24 characters, which lines the table up.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> look columns up by name, never by number. The day someone adds a column to the spreadsheet, code that says <code>r[7]</code> silently reads the wrong data; code that says <code>r[col['Age (yrs)']]</code> keeps working.</p></div>
+          <div class="try" data-n="2">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p>The header row below has blanks, like the C-Table. Build <code>col</code> (name → column number, skipping blanks) with a comprehension, then print each student as a lined-up row: name padded to 8 characters, score with 1 decimal in 6 characters.</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 3 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-3"> I've done this lesson</label>
+        </article>
+        <article class="lesson" id="py-4">
+          <header><span class="lnum">Lesson 4</span><h3>Reading messy real-world data</h3></header>
+          <p>Published data is never clean. The C-Table has 1,971 people from 19 studies, with blank cells, ages written as text, and two columns (left, right) for some landmarks. This loop survives all of it.</p>
+          <div class="codehead"><span>tools/tissue_depth.py · depths()</span></div>
+          <pre><code class="language-python">rows = list(csv.reader(open(path, encoding=&#x27;latin-1&#x27;)))
+hdr = rows[2]; col = {h: i for i, h in enumerate(hdr) if h}
+out = {}
+for code in list(MIDLINE) + list(BILATERAL):
+    cols = [col[code]] if code in MIDLINE else [col[&#x27;L_&#x27; + code], col[&#x27;R_&#x27; + code]]
+    vals = []
+    for r in rows[3:]:
+        try: age = float(r[col[&#x27;Age (yrs)&#x27;]])
+        except ValueError: continue
+        if r[col[&#x27;Sex&#x27;]] != sex or age &lt; min_age: continue
+        for c in cols:
+            if r[c].strip():
+                try: vals.append(float(r[c]))
+                except ValueError: pass
+    if not vals: continue
+    v = np.array(vals)
+    stat = &#x27;shorth&#x27; if code in SKEWED else &#x27;mean&#x27;
+    out[code] = ((shorth(v) if code in SKEWED else v.mean()) / 1000, len(v), stat)
+return out</code></pre>
+          <ul class="notes"><li><code>csv.reader(open(path, encoding=&#x27;latin-1&#x27;))</code><span>The <code>csv</code> module splits rows correctly even when a cell contains a comma in quotes. The file isn't UTF-8, so its encoding is named.</span></li><li><code>try: … except ValueError: continue</code><span><code>float('n/a')</code> raises a <code>ValueError</code>. Instead of crashing, the code skips that person. Catch the <i>specific</i> error you expect, not every error.</span></li><li><code>continue / pass</code><span><code>continue</code> jumps to the next row; <code>pass</code> does nothing (skip just this value but keep the row).</span></li><li><code>if r[c].strip():</code><span>Blank or space-only cells count as false, so they're skipped.</span></li><li><code>list(MIDLINE) + list(BILATERAL)</code><span>A dictionary turned into a list gives its keys, in the order they were written.</span></li><li><code>out[code] = (…, len(v), stat)</code><span>Stores a <b>tuple</b> per landmark: the value, how many people it's based on, and which statistic was used. Keeping the count lets you see when a number rests on very little data.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> filter first, then compute; skip bad cells instead of crashing; and keep a count of how much data each answer is based on. That pattern works for survey exports, bank statements, sports stats or grade sheets.</p></div>
+          <div class="try" data-n="3">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p>The CSV text below mimics the C-Table: one age is unknown and some cells are blank. Fill in <code>mean_depth</code> to average column <code>g</code> over people aged 18 or more, skipping anything that isn't a number. Return <code>(mean, count)</code>.</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 4 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-4"> I've done this lesson</label>
+        </article><h3 class="unithead"><span>Unit B</span> Files and pipelines</h3>
+        <article class="lesson" id="py-5">
+          <header><span class="lnum">Lesson 5</span><h3>Writing files safely</h3></header>
+          <p><code>fit_rig.py</code> runs for minutes and writes a 44 MB file that the page depends on. If it crashed halfway through writing, you'd be left with a broken, half-written <code>body-rig.js</code>. Three small habits prevent that.</p>
+          <div class="codehead"><span>tools/fit_rig.py · banner &quot;write&quot; (end of file)</span></div>
+          <pre><code class="language-python">text_ = json.dumps(rig)   # (built first: a failure here must not leave a half-written body-rig.js)
+with open(f&#x27;{out}/body-rig.js.tmp&#x27;, &#x27;w&#x27;) as fh:
+    fh.write(&#x27;// Generated by tools/fit_rig.py. Body: &quot;Male Base Mesh&quot; (CC0) fitted to Z-Anatomy\n&#x27;)
+    fh.write(&#x27;// (Z-Anatomy, CC BY-SA 4.0, built on BodyParts3D (c) The Database Center for Life Science).\n&#x27;)
+    fh.write(&#x27;window.BODY_RIG = &#x27; + text_ + &#x27;;\n&#x27;)
+os.replace(f&#x27;{out}/body-rig.js.tmp&#x27;, f&#x27;{out}/body-rig.js&#x27;)
+print(&#x27;wrote&#x27;, f&#x27;{out}/body-rig.js&#x27;, file=sys.stderr)</code></pre>
+          <ul class="notes"><li><code>text_ = json.dumps(rig)</code><span><b>Build everything before opening the file.</b> If turning the data into text fails, nothing has been touched yet.</span></li><li><code>with open(…) as fh:</code><span>A <code>with</code> block closes the file when the block ends, even if an error happens inside it. Always open files this way.</span></li><li><code>&#x27;….tmp&#x27;</code><span><b>Write to a temporary name first.</b> While it's being written, the old <code>body-rig.js</code> is still there and still works.</span></li><li><code>os.replace(tmp, final)</code><span><b>Swap it in at the end.</b> On the same disk, a rename happens all at once, so anything reading the file sees either the whole old version or the whole new one, never half.</span></li><li><code>print(…, file=sys.stderr)</code><span>Progress messages go to <i>stderr</i>, the terminal's error channel, keeping them apart from real output.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> any program that overwrites a file people rely on (a save file, a config, a website's data, a spreadsheet export) should write to a temporary file and <code>os.replace</code> it into place. It's three extra lines and prevents a whole class of "my file is corrupted" bugs.</p></div>
+          <div class="try" data-n="4">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p>Write <code>save_json(path, obj)</code> the same way: build the text first, write it to <code>path + '.tmp'</code> inside a <code>with</code> block, then <code>os.replace</code> it onto <code>path</code>. (This page runs Python with a small private disk, so writing files here is safe.)</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 5 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-5"> I've done this lesson</label>
+        </article>
+        <article class="lesson" id="py-6">
+          <header><span class="lnum">Lesson 6</span><h3>Caching slow work by fingerprint</h3></header>
+          <p>Fitting each MakeHuman hand or foot takes a while, and most rebuilds don't change them. So the result is saved to disk under a name made from a <b>fingerprint of everything it depends on</b>. Same inputs, same fingerprint: load the saved copy. Anything changed: the name changes and it's recomputed.</p>
+          <div class="codehead"><span>tools/fit_rig.py · banner &quot;hands and feet: the MakeHuman base mesh&#x27;s&quot; (≈ line 1434)</span></div>
+          <pre><code class="language-python">key = hashlib.sha1(b&#x27;&#x27;.join([np.round(a, 5).tobytes() for a in (ours_, bones_P, guide)]) +
+                   open(mh_parts.__file__, &#x27;rb&#x27;).read() + open(f&#x27;{MH_DIR}/base.obj&#x27;, &#x27;rb&#x27;).read()).hexdigest()[:16]
+cache = f&#x27;{MH_DIR}/cache/{kind}{sfx}-{key}.pkl&#x27;
+was_cached = os.path.exists(cache)
+if was_cached:
+    P_, T_, Wp, s_ = pickle.load(open(cache, &#x27;rb&#x27;))
+else:
+    P_, T_, Wp, s_ = mh_parts.fit_part(mh_mesh, sl, A_mh, ours_, joint, prox, bones_P, guide, **kw)
+    os.makedirs(f&#x27;{MH_DIR}/cache&#x27;, exist_ok=True); pickle.dump((P_, T_, Wp, s_), open(cache, &#x27;wb&#x27;))</code></pre>
+          <ul class="notes"><li><code>hashlib.sha1(…).hexdigest()[:16]</code><span>A <b>hash</b> turns any bytes into a short code. Change one byte of input and the code changes completely. 16 hex characters is plenty to tell versions apart.</span></li><li><code>np.round(a, 5).tobytes()</code><span>The inputs are arrays; their raw bytes go into the hash. Rounding first means tiny floating-point noise doesn't cause needless recomputes.</span></li><li><code>open(mh_parts.__file__, &#x27;rb&#x27;).read()</code><span>The <b>code itself</b> is part of the fingerprint. Edit <code>mh_parts.py</code> and every cached fit is automatically out of date. This is the step people forget.</span></li><li><code>pickle.dump / pickle.load</code><span><code>pickle</code> saves almost any Python object to a file and loads it back. Fine for your own cache; never unpickle files from someone you don't trust, because loading can run code.</span></li><li><code>**kw</code><span>Passes a dictionary's entries as named arguments: <code>f(**{'start': -0.1})</code> is <code>f(start=-0.1)</code>.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> a cache keyed by a fingerprint of <i>inputs plus code</i> never serves stale results and never needs clearing by hand. The same idea powers build tools, <code>functools.lru_cache</code> in memory, and the <code>fingerprint</code> that stops the page using a <code>skin-uv.js</code> built for an older body.</p></div>
+          <div class="try" data-n="5">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p>Write <code>cached(fn, *args)</code>: fingerprint <code>repr(args)</code> plus the function's name with <code>hashlib.sha1</code>, keep results in the dictionary <code>CACHE</code> under that key, and only call <code>fn</code> on a miss.</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 6 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-6"> I've done this lesson</label>
+        </article>
+        <article class="lesson" id="py-7">
+          <header><span class="lnum">Lesson 7</span><h3>Binary files: bytes, headers and offsets</h3></header>
+          <p>Text formats like CSV and JSON are easy to read but slow and big for millions of numbers. <code>convert_fbx.py</code> writes meshes in a tiny binary format of its own: a 4-byte length, a JSON header, then raw numbers. <code>meshes.py</code> reads it back in 13 lines.</p>
+          <div class="codehead"><span>tools/meshes.py (the whole file)</span></div>
+          <pre><code class="language-python">def read_meshes(path):
+    blob = open(path, &#x27;rb&#x27;).read()
+    hl = struct.unpack(&#x27;&lt;I&#x27;, blob[:4])[0]
+    header = json.loads(blob[4:4 + hl])
+    off = 4 + hl
+    nv = sum(h[&#x27;verts&#x27;] for h in header); nt = sum(h[&#x27;tris&#x27;] for h in header)
+    P = np.frombuffer(blob, np.float32, nv * 3, off).reshape(-1, 3); off += nv * 12
+    I = np.frombuffer(blob, np.uint32, nt * 3, off).reshape(-1, 3)
+    out, vo, to = [], 0, 0
+    for h in header:
+        out.append((h[&#x27;name&#x27;], P[vo:vo + h[&#x27;verts&#x27;]], I[to:to + h[&#x27;tris&#x27;]]))
+        vo += h[&#x27;verts&#x27;]; to += h[&#x27;tris&#x27;]
+    return out</code></pre>
+          <ul class="notes"><li><code>open(path, &#x27;rb&#x27;)</code><span><code>'rb'</code> = read <b>bytes</b>, not text. You get a <code>bytes</code> object you can slice like a list.</span></li><li><code>struct.unpack(&#x27;&lt;I&#x27;, blob[:4])</code><span><code>struct</code> converts bytes to numbers. <code>&lt;</code> means little-endian (the byte order Macs and PCs use); <code>I</code> is a 4-byte unsigned integer. That number says how long the JSON header is.</span></li><li><code>header = json.loads(…)</code><span>The header is a small JSON list of parts: name, number of points, number of triangles. Mixing a readable header with raw data is a classic file design.</span></li><li><code>np.frombuffer(blob, np.float32, nv * 3, off)</code><span>Views the bytes from <code>off</code> as 32-bit decimals with <b>no copying or parsing</b>. Then <code>off += nv * 12</code> moves past them: 3 numbers × 4 bytes per point.</span></li><li><code>sum(h[&#x27;verts&#x27;] for h in header)</code><span>A <b>generator expression</b>: like a list comprehension inside <code>sum()</code>, without building the list.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> "length, header, payload" is how PNG, ZIP, WAV and network protocols are built. When you need to store lots of numbers fast, write raw bytes with a small header describing them, and keep an <code>off</code> (offset) counter as you read.</p></div>
+          <div class="try" data-n="6">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p>Pack a file in memory: a 4-byte header length, a JSON header <code>{"n": 3}</code>, then three float32 numbers. Then write <code>read(blob)</code> that gets them back as a list, using only <code>struct</code> and <code>json</code>.</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 7 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-7"> I've done this lesson</label>
+        </article><h3 class="unithead"><span>Unit C</span> Thinking in arrays (numpy)</h3>
+        <article class="lesson" id="py-8">
+          <header><span class="lnum">Lesson 8</span><h3>numpy arrays: shapes, columns and masks</h3><span class="tag py">numpy</span></header>
+          <p>A mesh with 80,000 points is a numpy array of shape <code>(80000, 3)</code>: one row per point, one column each for x, y, z. Instead of looping over points, you write one expression that applies to all of them. This is the single most important idea in the Python half.</p>
+          <div class="codehead"><span>tools/fit_rig.py · nearest() (≈ line 540)</span></div>
+          <pre><code class="language-python">lo, hi = q.min(0) - margin, q.max(0) + margin
+cand = pool[np.all((pool &gt;= lo) &amp; (pool &lt;= hi), 1)]
+
+# elsewhere in the project:
+P[:, 1]                # the y (height) of every point
+P[P[:, 0] &gt; 0]         # only the points on the body&#x27;s left side</code></pre>
+          <ul class="notes"><li><code>q.min(0)</code><span>The minimum <b>down axis 0</b> (over all rows), giving one value per column: the lowest x, y and z. <code>min(1)</code> would give one value per row.</span></li><li><code>pool &gt;= lo</code><span>Compares every number in <code>pool</code> with <code>lo</code> at once, giving an array of True/False of the same shape. This is a <b>mask</b>.</span></li><li><code>(…) &amp; (…)</code><span>Element-wise "and" between masks. Use <code>&amp;</code>, <code>|</code> and <code>~</code> with arrays (not <code>and</code>/<code>or</code>/<code>not</code>), and wrap each comparison in brackets.</span></li><li><code>np.all(mask, 1)</code><span>True for rows where all three columns are True: the point is inside the box on x, y <i>and</i> z.</span></li><li><code>pool[mask]</code><span>Indexing with a mask keeps only the True rows. Here: only the anatomy points inside the search box, so the expensive step that follows works on a few hundred points, not 300,000.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> "make a mask, then index with it" replaces most <code>for</code>-loops-with-<code>if</code> in data work. It's how you'd filter rows in pandas, pixels in an image, or students above a cutoff, and it's typically 50–100× faster than a Python loop.</p></div>
+          <div class="try" data-n="7">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p><code>P</code> is 1,000 random points in a 2 m box centred on the origin. Using masks only (no loops): count points on the left side (x &gt; 0), and get the points inside the box from (−0.5, −0.5, −0.5) to (0.5, 0.5, 0.5).</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 8 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-8"> I've done this lesson</label>
+        </article>
+        <article class="lesson" id="py-9">
+          <header><span class="lnum">Lesson 9</span><h3>Broadcasting, and doing it in chunks</h3><span class="tag py">numpy</span></header>
+          <p>"Which pool point is closest to each query point?" comes up all over this project. numpy can compare every query with every pool point in one expression, a trick called <b>broadcasting</b>. Done all at once it would need far too much memory, so it's done in chunks.</p>
+          <div class="codehead"><span>tools/mh_parts.py · nearest()</span></div>
+          <pre><code class="language-python">def nearest(Q, pool, chunk=256):
+    &quot;&quot;&quot;Index of the nearest pool point for every query point (brute force in chunks, fine for a hand).&quot;&quot;&quot;
+    out = np.zeros(len(Q), int)
+    for i in range(0, len(Q), chunk):
+        out[i:i + chunk] = ((Q[i:i + chunk, None] - pool[None]) ** 2).sum(-1).argmin(1)
+    return out</code></pre>
+          <ul class="notes"><li><code>Q[i:i + chunk, None]</code><span><code>None</code> adds an axis of size 1: shape <code>(256, 3)</code> becomes <code>(256, 1, 3)</code>.</span></li><li><code>pool[None]</code><span>Shape <code>(m, 3)</code> becomes <code>(1, m, 3)</code>.</span></li><li><code>(…) - (…)</code><span><b>Broadcasting:</b> axes of size 1 stretch to match. <code>(256, 1, 3) − (1, m, 3)</code> gives <code>(256, m, 3)</code>: every query minus every pool point.</span></li><li><code>** 2 … .sum(-1)</code><span>Square and add over the last axis (x, y, z): squared distances, shape <code>(256, m)</code>. No square root needed, since the nearest is the same either way.</span></li><li><code>.argmin(1)</code><span>For each row, the <b>position</b> of the smallest value: the index of the nearest pool point.</span></li><li><code>for i in range(0, len(Q), chunk)</code><span><b>Chunking:</b> 80,000 × 80,000 × 3 decimals would be about 150 GB. 256 rows at a time keeps it to a few MB, while each chunk still runs at numpy speed.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> broadcasting turns "for each A, for each B" into one line, and chunking keeps the memory bounded. For really large sets, use a spatial index such as <code>scipy.spatial.cKDTree</code>; the project uses brute force where the sets are small (a hand) and box-filtering plus chunks elsewhere.</p></div>
+          <div class="try" data-n="8">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p>Write <code>nearest_2d(Q, pool, chunk=64)</code> for 2D points the same way. The check compares it with a slow double loop.</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 9 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-9"> I've done this lesson</label>
+        </article>
+        <article class="lesson" id="py-10">
+          <header><span class="lnum">Lesson 10</span><h3>Adding up by index: np.add.at and bincount</h3><span class="tag py">numpy</span></header>
+          <p>Triangles know their three corner points, but lighting needs a direction (<b>normal</b>) per point. Each point's normal is the sum of its triangles' normals. Many triangles share a point, so you need "add these values into these slots, even when slots repeat".</p>
+          <div class="codehead"><span>tools/mh_parts.py · vertex_normals(), smooth_field()</span></div>
+          <pre><code class="language-python">def vertex_normals(V, T):
+    N = np.zeros_like(V)
+    fn = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]])
+    for k in range(3): np.add.at(N, T[:, k], fn)
+    return N / np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-12)
+
+
+def smooth_field(D, T, n, passes):
+    i = np.concatenate([T[:, 0], T[:, 1], T[:, 2], T[:, 1], T[:, 2], T[:, 0]])
+    j = np.concatenate([T[:, 1], T[:, 2], T[:, 0], T[:, 0], T[:, 1], T[:, 2]])
+    deg = np.maximum(np.bincount(i, minlength=n), 1)[:, None]
+    for _ in range(passes):
+        acc = np.zeros_like(D); np.add.at(acc, i, D[j]); D = 0.5 * D + 0.5 * acc / deg
+    return D</code></pre>
+          <ul class="notes"><li><code>V[T[:, 1]]</code><span><b>Fancy indexing:</b> an array of indices picks those rows. <code>T[:, 1]</code> is every triangle's second corner, so this is every triangle's second corner position.</span></li><li><code>np.cross(…)</code><span>The cross product of two edges points straight out of the triangle; its length is twice the area, so big triangles count more.</span></li><li><code>np.add.at(N, T[:, k], fn)</code><span>Adds each triangle's normal into its corner's slot. Plain <code>N[idx] += fn</code> would <b>lose</b> repeats (only the last one would stick); <code>np.add.at</code> adds them all.</span></li><li><code>i, j</code><span>Every edge in both directions: point <code>i</code> has neighbour <code>j</code>. This is how a mesh becomes a <b>graph</b>.</span></li><li><code>np.bincount(i, minlength=n)</code><span>Counts how often each number appears: here, how many neighbours each point has.</span></li><li><code>0.5 * D + 0.5 * acc / deg</code><span>Each pass moves every value halfway toward the average of its neighbours: smoothing (a step of heat diffusion).</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> "group totals by ID" is everywhere: sales per customer, minutes per user, votes per candidate. <code>np.bincount(ids, weights=values)</code> is the fast numpy answer (pandas calls it <code>groupby().sum()</code>). And "average with your neighbours, repeat" smooths anything that lives on a graph or grid: images, terrain, ratings.</p></div>
+          <div class="try" data-n="9">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p><code>sid</code> holds a student ID for each assignment and <code>pts</code> its score. Without loops, get each student's total (<code>np.bincount</code> with <code>weights</code>), how many assignments they have, and their average.</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 10 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-10"> I've done this lesson</label>
+        </article>
+        <article class="lesson" id="py-11">
+          <header><span class="lnum">Lesson 11</span><h3>Grouping with np.unique: thinning a mesh on a grid</h3><span class="tag py">numpy</span></header>
+          <p>The surface built from voxels has far more points than the browser needs. <code>decimate</code> snaps every point to a grid cell, merges points that share a cell into their average, and drops triangles that collapsed. It's a whole algorithm in six array lines.</p>
+          <div class="codehead"><span>tools/fit_rig.py · decimate() (≈ line 42)</span></div>
+          <pre><code class="language-python">key = np.c_[np.round(V / cell).astype(np.int64), facing] if keep_sides else np.round(V / cell).astype(np.int64)
+_, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel()
+cnt = np.bincount(inv); Q = np.zeros((len(cnt), 3))
+for c in range(3): Q[:, c] = np.bincount(inv, V[:, c]) / cnt
+I = inv[F]; I = I[(I[:, 0] != I[:, 1]) &amp; (I[:, 1] != I[:, 2]) &amp; (I[:, 0] != I[:, 2])]
+return Q, I</code></pre>
+          <ul class="notes"><li><code>np.round(V / cell).astype(np.int64)</code><span>Which grid cell each point is in, as whole numbers. Points 5 mm apart or less mostly land in the same cell.</span></li><li><code>np.c_[…, facing]</code><span>Adds a column: which way the surface faces. Points in the same cell but facing opposite ways (the two sides of a thin muscle) get different keys and are kept apart.</span></li><li><code>np.unique(key, axis=0, return_inverse=True)</code><span>Finds the distinct rows. <code>inv</code> says, for every original point, which distinct row (new point) it became. This "old → new number" map is the key to everything after.</span></li><li><code>np.bincount(inv, V[:, c]) / cnt</code><span>Sum of x (then y, z) per group divided by group size: the average position of each merged point.</span></li><li><code>I = inv[F]</code><span>Renumbers every triangle's corners to the new points in one step.</span></li><li><code>I[(I[:, 0] != I[:, 1]) &amp; …]</code><span>Drops triangles whose corners merged into the same point; they'd have no area.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> "compute a key per item, <code>np.unique(…, return_inverse=True)</code>, then aggregate with <code>bincount</code>" is a general group-by. Snap GPS points to a grid to make a heat map, bucket timestamps into hours, or de-duplicate rows.</p></div>
+          <div class="try" data-n="10">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p>Snap the 2D points to a 1 cm grid (<code>cell = 0.01</code>), merge each cell into its average, and report how many points are left. Use <code>np.unique</code> with <code>return_inverse</code> and <code>np.bincount</code>.</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 11 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-11"> I've done this lesson</label>
+        </article><h3 class="unithead"><span>Unit D</span> Bigger tools</h3>
+        <article class="lesson" id="py-12">
+          <header><span class="lnum">Lesson 12</span><h3>Functions that return functions</h3><span class="tag py">numpy</span></header>
+          <p>Fitting a MakeHuman hand starts by working out how to move, turn and scale it so its knuckles line up with ours. The fitting is expensive; applying the result to points is cheap. So the function does the work once and <b>returns a new function</b> that applies it.</p>
+          <div class="codehead"><span>tools/mh_parts.py · similarity(), rbf_warp()</span></div>
+          <pre><code class="language-python">def similarity(A, B):
+    &quot;&quot;&quot;Scale, rotation and shift taking points A onto B (least squares).&quot;&quot;&quot;
+    mA, mB = A.mean(0), B.mean(0); a_, b_ = A - mA, B - mB
+    U, S, Vt = np.linalg.svd(b_.T @ a_ / len(A)); D = np.eye(3); D[2, 2] = np.sign(np.linalg.det(U @ Vt))
+    R = U @ D @ Vt; s = (S * np.diag(D)).sum() / (a_ ** 2).sum(1).mean()
+    return lambda P: (P - mA) @ (s * R).T + mB
+
+
+def rbf_warp(A, B, reg=1e-6):
+    &quot;&quot;&quot;Smooth warp taking points A exactly onto B (biharmonic radial basis functions plus an affine part).&quot;&quot;&quot;
+    ...
+    sol = np.linalg.solve(M, rhs)
+    w, aff = sol[:n], sol[n:]
+
+    def f(P):
+        return np.linalg.norm(P[:, None] - A[None], axis=-1) @ w + np.c_[np.ones(len(P)), P] @ aff
+    return f</code></pre>
+          <ul class="notes"><li><code>return lambda P: …</code><span>A <b>lambda</b> is a one-line nameless function. This one remembers <code>mA</code>, <code>s</code>, <code>R</code> and <code>mB</code> from the call that made it. A function that carries its own remembered values is a <b>closure</b>.</span></li><li><code>def f(P): … return f</code><span>The same idea with a full inner function. <code>rbf_warp</code> solves a linear system once; <code>f</code> keeps the solution (<code>w</code>, <code>aff</code>) and can warp any number of points later.</span></li><li><code>@</code><span>Matrix multiplication. <code>P @ R.T</code> rotates every row of <code>P</code> at once.</span></li><li><code>np.linalg.svd, np.linalg.solve</code><span>Standard linear algebra: SVD finds the best rotation between two point sets (the Kabsch / Umeyama method); <code>solve</code> solves <code>M x = rhs</code>.</span></li><li><code>A.mean(0)</code><span>The centre of the landmarks: they're centred first, so rotation and scale don't also have to explain the shift.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> "fit once, return a function that applies the fit" keeps setup and use apart. You'll see it as a scaler fitted on training data and then applied to new data, as a unit converter, or as a pre-configured formatter. In Python, functions are values you can return, store in a dictionary or pass around.</p></div>
+          <div class="try" data-n="11">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p>Write <code>make_scaler(values)</code>: it finds the min and max once and returns two functions, <code>to01</code> (maps the range onto 0–1, like the <code>q16</code> packing does onto 0–65,535) and <code>back</code> (undoes it).</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 12 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-12"> I've done this lesson</label>
+        </article>
+        <article class="lesson" id="py-13">
+          <header><span class="lnum">Lesson 13</span><h3>Regular expressions: picking parts by name</h3></header>
+          <p>Z-Anatomy has thousands of named parts, like <code>Gluteus_medius_musclel</code> (the final <code>l</code> or <code>r</code> is the side). The builder picks which ones to treat specially with <b>regular expressions</b>: small patterns that match text.</p>
+          <div class="codehead"><span>tools/fit_rig.py · GLUTE (≈ line 725)</span></div>
+          <pre><code class="language-python">GLUTE = re.compile(r&#x27;Gluteus|Tensor_fasciae_latae|Piriformis&#x27;, re.I)
+for i, n in enumerate(names_arr):
+    if not GLUTE.search(n): continue
+    sfx = &#x27;.L&#x27; if n.rstrip(&#x27;)&#x27;)[-1] == &#x27;l&#x27; else &#x27;.R&#x27;
+    ...</code></pre>
+          <ul class="notes"><li><code>r&#x27;…&#x27;</code><span>A <b>raw string</b>: backslashes stay as typed. Always write patterns this way.</span></li><li><code>A|B|C</code><span><code>|</code> means "or": any of these three names.</span></li><li><code>re.I</code><span>Ignore upper/lower case, so <code>gluteus</code> in the middle of a name also matches.</span></li><li><code>re.compile(…)</code><span>Turns the pattern into an object once, outside the loop, so it's reused quickly for thousands of names.</span></li><li><code>.search(n)</code><span>Is the pattern anywhere in <code>n</code>? (<code>.match</code> only checks at the start, <code>.fullmatch</code> the whole string.)</span></li><li><code>n.rstrip(&#x27;)&#x27;)[-1]</code><span>Strips any trailing <code>)</code>, then takes the last character: the side letter.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> regular expressions shine when you need to pick or pull apart names that follow a convention: file names like <code>IMG_2041.jpg</code>, course codes like <code>EECS 203</code>, dates in logs. Keep them short and readable, and test them on a few real examples, as below.</p></div>
+          <div class="try" data-n="12">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p>From <code>names</code>, use one compiled pattern to keep the glute and biceps parts (any case), and build a dictionary name → side (<code>'.L'</code> or <code>'.R'</code>) using the same side rule as the project.</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 13 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-13"> I've done this lesson</label>
+        </article>
+        <article class="lesson" id="py-14">
+          <header><span class="lnum">Lesson 14</span><h3>Classes, servers and threads</h3></header>
+          <p>Python can't read the Z-Anatomy <code>.fbx</code> files easily, but three.js in a browser can. So <code>convert_fbx.py</code> runs a tiny web server, opens a hidden Chrome window on it, and the page posts the meshes back. It's a good small example of <b>classes</b>, <b>threads</b> and <b>running other programs</b>.</p>
+          <div class="codehead"><span>tools/convert_fbx.py</span></div>
+          <pre><code class="language-python">class Handler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+
+    def do_GET(self):
+        if self.path.startswith(&#x27;/convert.html&#x27;):
+            body = PAGE.encode(); ctype = &#x27;text/html&#x27;
+        ...
+
+    def do_POST(self):
+        ...
+        pending.discard(name)
+        if not pending: done.set()
+
+
+server = http.server.ThreadingHTTPServer((&#x27;127.0.0.1&#x27;, PORT), Handler)
+threading.Thread(target=server.serve_forever, daemon=True).start()
+procs = [subprocess.Popen([CHROME, &#x27;--headless=new&#x27;, ...]) for i, f in enumerate(files)]
+ok = done.wait(600)</code></pre>
+          <ul class="notes"><li><code>class Handler(BaseHTTPRequestHandler)</code><span><b>Inheritance:</b> the standard library's handler already knows HTTP. This class only fills in what's different. The server calls <code>do_GET</code> for page requests and <code>do_POST</code> for uploads.</span></li><li><code>def log_message(self, *a): pass</code><span><b>Overriding</b> a method to switch something off: the parent prints every request; this version prints nothing. <code>*a</code> accepts any arguments.</span></li><li><code>self</code><span>The object the method was called on. <code>self.path</code> is this request's URL.</span></li><li><code>threading.Thread(…, daemon=True).start()</code><span>Runs the server in the background so the main program can carry on. <code>daemon=True</code>: it won't keep Python alive at exit.</span></li><li><code>done = threading.Event() … done.wait(600)</code><span>An <b>Event</b> is a flag threads can wait on. The main thread sleeps until the last file arrives (<code>done.set()</code>) or 10 minutes pass.</span></li><li><code>subprocess.Popen([…])</code><span>Starts another program (Chrome) without waiting for it. The list form passes arguments safely, with no shell quoting problems.</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> when a tool you need only exists in another language, wrap it: run it as a subprocess, or give it a tiny local server to talk to. And when a library gives you a base class with <code>do_something</code> methods (servers, GUI widgets, test cases), subclass it and override only what you need.</p></div>
+          <div class="try" data-n="13">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p>No network needed: <code>Base.handle</code> dispatches to <code>do_GET</code> or <code>do_POST</code> by method. Write <code>Echo(Base)</code> that answers GET with <code>"page: " + path</code>, records every POST body in <code>self.saved</code>, and silences <code>log</code>.</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 14 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-14"> I've done this lesson</label>
+        </article>
+        <article class="lesson" id="py-15">
+          <header><span class="lnum">Lesson 15</span><h3>Graphs: finding the cheapest seam</h3></header>
+          <p>To flatten a sleeve, the skin map cuts it along the inner arm. "Where exactly?" is a <b>shortest-path</b> problem: treat mesh edges as roads, give each a cost (its length, made more expensive where a seam would be noticed), and let Dijkstra's algorithm find the cheapest route. <code>scipy</code> does the search; the project then walks the result back to get the path.</p>
+          <div class="codehead"><span>tools/uv_atlas.py · cut_path()</span></div>
+          <pre><code class="language-python">w = np.linalg.norm(V[a] - V[b], axis=1) * (cost[a] + cost[b]) / 2
+G = sp.coo_matrix((np.r_[w, w], (np.r_[a, b], np.r_[b, a])), (nV, nV)).tocsr()
+dist, pred, srcs = dijkstra(G, indices=np.array(src_pts), min_only=True, return_predecessors=True)
+end = dst_pts[np.argmin(dist[dst_pts])]
+path = [end]
+while pred[path[-1]] &gt;= 0: path.append(pred[path[-1]])</code></pre>
+          <ul class="notes"><li><code>w = length × cost</code><span>Each edge's weight. Raising <code>cost</code> in some places steers the seam away from them, the way an artist would hide a seam on the inner arm.</span></li><li><code>sp.coo_matrix(…)</code><span>A <b>sparse matrix</b>: an nV × nV table storing only the edges that exist. Both directions are added, so the graph is undirected.</span></li><li><code>dijkstra(G, indices=…, min_only=True)</code><span>Distances from the <i>nearest</i> of several start points to every point. <code>return_predecessors=True</code> also gives, for each point, the previous point on its best route.</span></li><li><code>dst_pts[np.argmin(dist[dst_pts])]</code><span>Of all allowed end points, the one reached most cheaply.</span></li><li><code>while pred[path[-1]] &gt;= 0: …</code><span><b>Path reconstruction:</b> follow "previous point" links back from the end until you reach a start (marked −9999, which is below zero).</span></li></ul>
+          <div class="anywhere"><p><b>Use it anywhere:</b> lots of problems are secretly graphs: routes on a map, prerequisite chains between courses, links between web pages, moves in a puzzle. Build the graph, pick an edge cost that says what "good" means, and let a library find the path. The cost is where your judgment goes.</p></div>
+          <div class="try" data-n="14">
+            <div class="tryhead"><b>Try it</b><span class="hint">Runs here in the page · <kbd>⌘</kbd>+<kbd>Enter</kbd> to run</span></div>
+            <p><code>pred</code> came from a search that started at point 0 (−1 means "no previous point"). Write <code>walk_back(pred, end)</code> that returns the path from the start to <code>end</code>, in order, using the same <code>while</code> idea.</p>
+            <textarea class="pyedit" spellcheck="false" autocapitalize="off" aria-label="Lesson 15 exercise code"></textarea>
+            <div class="trybar">
+              <button class="btn primary" type="button" data-run>Run</button>
+              <button class="btn" type="button" data-reset>Start over</button>
+              <button class="btn" type="button" data-answer>Load the answer</button>
+              <span class="pystatus" aria-live="polite"></span>
+            </div>
+            <pre class="pyout" hidden></pre>
+          </div>
+          <label class="readbox"><input type="checkbox" data-lesson="py-15"> I've done this lesson</label>
+        </article>
+      <h3 class="unithead"><span>Next</span> Practice projects</h3>
+      <p>Small projects that use the same ideas on your own data. Each one fits in an evening, and each names the lessons it practises.</p>
+      <div class="road">
+        <article class="card"><header><h3>Grade sheet summariser</h3><span class="pill plan">Lessons 2–4, 10</span></header><p>Read a CSV export of your grades with <code>csv</code>, look columns up by name, skip blank or "EX" cells, and print each course's mean and trimmed mean in a lined-up table. Then redo the totals with <code>np.bincount</code>.</p></article>
+        <article class="card"><header><h3>Safe notes saver</h3><span class="pill plan">Lessons 1, 5, 6</span></header><p>A command-line tool, <code>python3 notes.py add "text"</code>, that keeps notes in a JSON file, always saves with a temporary file and <code>os.replace</code>, and caches a slow word count by fingerprint.</p></article>
+        <article class="card"><header><h3>Photo heat map</h3><span class="pill plan">Lessons 8, 11</span></header><p>Take a list of (latitude, longitude) points, for example from your photos' metadata, snap them to a grid with <code>np.unique(…, return_inverse=True)</code>, count each cell, and print the busiest places.</p></article>
+        <article class="card"><header><h3>Campus route finder</h3><span class="pill plan">Lessons 9, 15</span></header><p>Write buildings and walking times as a graph, use <code>scipy.sparse.csgraph.dijkstra</code> with predecessors, and walk the path back. Then add a cost for stairs and watch the route change.</p></article>
+      </div>
+      <label class="readbox"><input type="checkbox" data-read="python"> I've read this chapter</label>
+    </section>
+
+    <!-- 3 -->
+    <section class="ch" id="build">
+      <p class="eyebrow">Chapter 4 · <span class="py">Python</span></p>
+      <h2>Building the body, step by step</h2>
+      <p><code>fit_rig.py</code> is one long script that runs top to bottom. It's divided by comment banners like <code># ------- skin built from the anatomy itself</code>, and those banners are the best handles to use when you ask for a change. Pick a step to see what it does and why.</p>
+      <div class="stepper" id="buildStepper" style="--side: var(--py)">
+        <ul class="steps" role="tablist" aria-label="Build steps"></ul>
+        <div class="detail" role="tabpanel" aria-live="polite"></div>
+      </div>
+      <label class="readbox"><input type="checkbox" data-read="build"> I've read this chapter</label>
+    </section>
+
+    <!-- 4 -->
+    <section class="ch" id="browser">
+      <p class="eyebrow">Chapter 5 · <span class="js">Browser</span></p>
+      <h2>What the page does when you move a joint</h2>
+      <p>When the page loads, it turns the packed text back into arrays, builds three.js meshes, and makes a <code>THREE.Bone</code> for each of the 80 rig bones (including the twist knots). After that, nothing is recalculated until you move something. Dragging sets a <code>dirty</code> flag, and the next frame runs <code>refresh()</code>:</p>
+      <ol class="loop">
+        <li><div><b>Read the mouse</b><span>A ray from the camera finds the clicked triangle; the bone with the most weight on it is the one you're holding (<code>boneUnderPointer</code>). Left-drag pulls it with inverse kinematics, right-drag rotates it.</span></div></li>
+        <li><div><b>Respect the joint limits</b><span><code>clampJoint</code> splits each rotation into a swing (where the bone points) and a twist (around the bone), and clamps both to the ranges in <code>LIMITS</code>, e.g. the wrist bends 80° forward and 70° back.</span></div></li>
+        <li><div><b>Let the body follow</b><span>The "kinetic chain" adds automatic movement on top of yours: the shoulder blade follows the arm, the spine twists a little. Every bone keeps <code>user</code> and <code>auto</code> rotations separately.</span></div></li>
+        <li><div><b>Work out each bone's movement</b><span><code>updateBoneMats</code> computes, for every bone, "current position × inverse of rest position". That one matrix says how the bone has moved since the rest pose.</span></div></li>
+        <li><div><b>Contract the muscles</b><span><code>contract()</code> runs once those matrices are known. It measures each muscle's length between its posed attachment points and works out how far each point should bulge or thin (chapter 11). The offsets are added to the muscles right after they're skinned, before the collision and clean-up passes; the skin gets the same bulge through <code>RIG.anchors</code>, even with the muscle layer hidden. The <b>Flex</b> slider adds effort on top.</span></div></li>
+        <li><div><b>Move the muscles</b><span><code>cpuSkin</code> moves every muscle point by a weighted blend of its bones' movements (chapter 6). Then the muscle-order pass and the bone collisions (<code>keepBelow</code>, <code>resolve</code>) push anything that went where it shouldn't.</span></div></li>
+        <li><div><b>Move the skin and fat</b><span>The same skinning, then <code>followMuscles</code> copies the muscles' corrections onto the skin above them, <code>resolve</code> keeps it out of the bones, <code>implicitJoints</code> makes creases at elbows and knees, <code>untangle</code> smooths any patch that folded inside out, and <code>deltaMush</code> evens out the surface while keeping its detail.</span></div></li>
+        
+        <li><div><b>Close the map seams</b><span><code>copySeams</code> gives each duplicated seam point the exact position of its original, so the skin map never splits.</span></div></li>
+        <li><div><b>Draw</b><span>Mark the arrays as changed (<code>needsUpdate</code>) and let three.js render. While you're dragging, fewer clean-up rounds run to keep it responsive; when you let go, the full clean-up runs.</span></div></li>
+      </ol>
+      <div class="codehead"><span>index.html · around line 1418 · the per-frame update</span></div>
+      <pre><code class="language-javascript">function refresh() {
+  if (!dirty) return;
+  updatePulls();
+  rigRoot.updateMatrixWorld(true);
+  updateBoneMats();
+  if (fix.contract) { contract(); flattenLatFold(); }
+  const layersNow = [muscleMesh.visible &amp;&amp; muscleS, bodyS, fatMesh.visible &amp;&amp; fatS].filter(Boolean);
+  for (const s of layersNow) {
+    cpuSkin(s);
+    if (s === muscleS) {
+      const lbs = s.mesh.geometry.attributes.position.array.slice();
+      // ...add the contraction offsets (conOff) and the lat fold
+      if (fix.below) keepBelow(s);
+      resolve(s, true);
+      // ...remember how far each muscle point was pushed (musDelta)
+    } else {
+      followMuscles(s); resolve(s, false); implicitJoints(s);
+      const rounds = drag ? fix.roundsDrag : fix.rounds;
+      for (let r = 0; r &lt; rounds; r++) untangle(s, r);
+      deltaMush(s);
+      if (s === bodyS) copySeams(s);
+      if (fix.normals) recomputeNormals(s);
+    }
+    // ...needsUpdate, bounding sphere
+  }
+  dirty = false;
+}</code></pre>
+      <p>The controls map to plain variables. <b>Presets</b> (A-pose, Standing, Star, Reach, Hands behind head) set every joint's turn. <b>Layers</b> toggle <code>.visible</code> and transparency. <b>Skin map</b> shows the 1 cm grid texture from <code>skin-map.js</code>. <b>Creases</b> draws the inside of the skin dark, so a leftover fold reads as a crease. <b>Flex</b> sets <code>flex</code> (0–1) for the muscle contraction. <b>Copy pose / Paste pose</b> put every joint's turn on the clipboard, so you can send an exact pose with a bug report. Developer switches live in the <code>fix</code> object, e.g. <code>fix.contract</code>.</p>
+      <label class="readbox"><input type="checkbox" data-read="browser"> I've read this chapter</label>
+    </section>
+
+    <!-- 5 -->
+    <section class="ch" id="skinning">
+      <p class="eyebrow">Chapter 6 · Core idea</p>
+      <h2>Bones and weights: how skin follows a skeleton</h2>
+      <p>A mesh is just two arrays: <b>points</b> (x, y, z for each) and <b>triangles</b> (three point numbers each). To animate it, every point stores up to four bone numbers and four <b>weights</b> that add up to 1. A point in the middle of the forearm is 100% forearm. A point at the elbow might be 50% upper arm and 50% forearm.</p>
+      <p><b>Plain blending</b> (linear blend skinning) moves the point with each bone separately and averages the results. It's fast and simple, but at a bend those averaged positions cut the corner, so the joint loses volume and pinches. The project now uses <b>centers of rotation</b> (Le &amp; Hodgins 2016). The bones' <em>rotations</em> are blended instead, and the point turns around its own centre, which Python works out once per point. Try both below.</p>
+      <div class="demo">
+        <canvas id="skinCanvas" width="900" height="420" aria-label="Interactive demo: a 2D arm bending at the elbow"></canvas>
+        <div class="controls">
+          <label for="bend">Elbow bend <input id="bend" type="range" min="0" max="150" value="110"></label>
+          <label for="spread">Weight spread <input id="spread" type="range" min="2" max="40" value="22"></label>
+          <span class="seg" role="group" aria-label="Skinning method">
+            <button type="button" id="mLBS" aria-pressed="true">Plain blending</button>
+            <button type="button" id="mCOR" aria-pressed="false">Centers of rotation</button>
+          </span>
+          <span class="readout" id="skinReadout"></span>
+        </div>
+        <p class="caption">Points are coloured by how much the forearm moves them: teal is all upper arm, crimson is all forearm. The faint outline is the arm at rest. "Area kept" compares the bent arm's area with the straight one; plain blending loses area at the elbow.</p>
+      </div>
+      <div class="codehead"><span>index.html · cpuSkinLBS · the core loop of plain blending</span></div>
+      <pre><code class="language-javascript">for (let k = 0; k &lt; 4; k++) {
+  const w = sw[i4 + k];                 // this bone's weight on point i
+  if (!w) continue;
+  const b = si[i4 + k] * 16;            // where this bone's 4x4 matrix starts in M
+  x += w * (M[b] * px + M[b + 4] * py + M[b + 8] * pz + M[b + 12]);
+  y += w * (M[b + 1] * px + M[b + 5] * py + M[b + 9] * pz + M[b + 13]);
+  z += w * (M[b + 2] * px + M[b + 6] * py + M[b + 10] * pz + M[b + 14]);
+}</code></pre>
+      <p>Where the weights come from matters as much as the method. <code>fit_rig.py</code> spreads them with <b>heat diffusion</b> (the "Pinocchio" method, Baran &amp; Popović 2007). Each bone warms the skin it can see, the heat spreads over the surface, and the result changes smoothly across every joint instead of jumping.</p>
+      <label class="readbox"><input type="checkbox" data-read="skinning"> I've read this chapter</label>
+    </section>
+
+    <!-- 6 -->
+    <section class="ch" id="voxels">
+      <p class="eyebrow">Chapter 7 · Core idea</p>
+      <h2>Skin from voxels: wrapping the anatomy</h2>
+      <p>The skin isn't sculpted; it's grown from the anatomy. <code>envelope.py</code> drops every muscle and bone point into a 3D grid of tiny cubes (voxels, 3 mm by default), marks those cubes as "inside", grows that region outward by a few voxels for fat and skin, blurs it, and extracts the surface where the blurred value crosses one half. That last step is called <b>surface nets</b>. The demo does the same thing in 2D with a forearm cross-section and two fingers.</p>
+      <div class="demo">
+        <canvas id="voxCanvas" width="900" height="460" aria-label="Interactive demo: building a skin outline from voxels"></canvas>
+        <div class="controls">
+          <label for="grow">Skin layer <input id="grow" type="range" min="0" max="6" value="2"></label>
+          <label for="blurN">Blur passes <input id="blurN" type="range" min="0" max="4" value="1"></label>
+          <label><input id="showVox" type="checkbox" checked> Show voxels</label>
+          <label><input id="sepFingers" type="checkbox"> Build fingers separately</label>
+          <span class="readout" id="voxReadout"></span>
+        </div>
+        <p class="caption">Grey shapes are the anatomy. Push the skin layer up: gaps narrower than about twice the layer get bridged, which is right over the breastbone but wrong between fingers. "Build fingers separately" is the fix the real code uses: each finger gets its own grid, so they can't fuse.</p>
+      </div>
+      <p>That's why the first hands looked like separate tubes: fingers were built apart so they'd never web together. The hands, feet and face now come from the MakeHuman base mesh instead (chapter 11), because voxels at 3 mm are too coarse for knuckles and nails.</p>
+      <div class="codehead"><span>tools/envelope.py · envelope() · the whole idea in a few lines</span></div>
+      <pre><code class="language-python">for pts, r, cl in zip(groups, radii, closes):          # each group on its own (never bridged)
+    sub = solid(pts, origin + lo * cell, cell, tuple(hi - lo), r, cl)
+    inside[lo[0]:hi[0], lo[1]:hi[1], lo[2]:hi[2]] |= sub    # mark voxels inside + skin layer
+inside = opening(inside, 1)                               # remove 1-voxel specks
+f = blur(inside.astype(np.float32), blur_passes)          # soften the blocky edge
+return surface_nets(f, origin, cell)                      # surface where f crosses 0.5</code></pre>
+      <label class="readbox"><input type="checkbox" data-read="voxels"> I've read this chapter</label>
+    </section>
+
+    <!-- 7 -->
+    <section class="ch" id="packing">
+      <p class="eyebrow">Chapter 8 · Core idea</p>
+      <h2>Packing the data so a browser can load it</h2>
+      <p>Python and the browser share no memory, so the arrays are written as text. Each numpy array is turned into raw bytes, then into <b>base64</b> (a way of writing bytes as letters). JavaScript turns the letters back into bytes and views them as a typed array, such as <code>Float32Array</code> or <code>Uint16Array</code>, with no copying or parsing of numbers.</p>
+      <p><b>Since 4 Nov, big arrays are also compressed</b> (<code>tools/rigpack.py</code>). Before gzip, the bytes of each number are regrouped: all first bytes, then all second bytes, and so on. Neighbouring triangle numbers share their high bytes, so gzip finds long repeats and triangle lists shrink about 4×. An array identical to one already written (the fat and the skin share their triangles) is stored once, as <code>{"ref": "body.index"}</code>. The page unpacks everything once at startup with the browser's own <code>DecompressionStream</code>, so the rest of the code sees exactly the same bytes. That took <code>body-rig.js</code> from 44 MB to 20 MB. <code>tools/pack_rig.py</code> converts an old-format file without a rebuild.</p>
+      <p>Positions get one more trick. Instead of 4-byte decimals, each coordinate is stored as a whole number from 0 to 65,535 inside the mesh's bounding box. That halves the size, and the step between values is tiny.</p>
+      <div class="demo" style="display:grid; gap:10px">
+        <label for="qrange" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap">Size of the box along one axis (metres) <input id="qrange" type="number" min="0.01" max="10" step="0.01" value="1.87" style="width:90px; font:inherit; padding:4px 8px; border:1px solid var(--line); border-radius:6px; background:var(--surface); color:var(--ink)"></label>
+        <div class="readout" id="qout" style="margin:0"></div>
+      </div>
+      <div class="codehead"><span>Python side · fit_rig.py, end of file</span></div>
+      <pre><code class="language-python">def b64(a): return base64.b64encode(np.ascontiguousarray(a).tobytes()).decode()
+
+def q16(P):
+    """Positions packed as 16-bit integers inside their bounding box (half the size, ~0.03 mm steps)."""
+    lo, hi = P.min(0), P.max(0)
+    return {'min': lo.tolist(), 'max': hi.tolist(), 'q': b64(np.round((P - lo) / (hi - lo) * 65535).astype(np.uint16))}</code></pre>
+      <div class="codehead"><span>Browser side · index.html, near the top</span></div>
+      <pre><code class="language-javascript">const decode = (b64, Type) =&gt; new Type(Uint8Array.from(atob(b64), c =&gt; c.charCodeAt(0)).buffer);
+
+function positions(p) {
+  if (typeof p === 'string') return decode(p, Float32Array);
+  const q = decode(p.q, Uint16Array), out = new Float32Array(q.length);
+  for (let i = 0; i &lt; q.length; i++) { const c = i % 3; out[i] = p.min[c] + (q[i] / 65535) * (p.max[c] - p.min[c]); }
+  return out;
+}</code></pre>
+      <p>Units are metres everywhere, with y pointing up, z forward and +x toward the body's own left. So 1 unit in the code is 1 metre of body, which is what lets the skin map and tattoo sizes be true to life.</p>
+      <label class="readbox"><input type="checkbox" data-read="packing"> I've read this chapter</label>
+    </section>
+
+    <!-- 8 -->
+    <section class="ch" id="patterns">
+      <p class="eyebrow">Chapter 9</p>
+      <h2>Patterns you'll see in the code</h2>
+      <p>Both halves work on whole arrays of points, but in different styles. In <b>Python with numpy</b>, you write one line and it applies to every point at once; loops are slow, so the code avoids them. In <b>JavaScript</b>, plain <code>for</code> loops over typed arrays are fast, so the per-pose code is written as explicit loops.</p>
+      <div class="tbl"><table>
+        <thead><tr><th>You'll see</th><th>Where</th><th>What it means</th></tr></thead>
+        <tbody>
+          <tr><td><code>P[:, 1]</code></td><td><span class="tag py">numpy</span></td><td>The y coordinate of every point (column 1 of an N×3 array).</td></tr>
+          <tr><td><code>P[mask]</code></td><td><span class="tag py">numpy</span></td><td>Only the points where a true/false array is true, e.g. <code>P[P[:, 0] &gt; 0]</code> is the body's left half.</td></tr>
+          <tr><td><code>np.add.at(acc, i, v)</code></td><td><span class="tag py">numpy</span></td><td>Add many values into slots by index, even when indices repeat; used to sum things per point from triangles.</td></tr>
+          <tr><td><code>np.unique(..., return_inverse=True)</code></td><td><span class="tag py">numpy</span></td><td>Merge identical rows; used to weld points and to thin meshes onto a grid.</td></tr>
+          <tr><td><code>re.compile(r'Biceps|Triceps')</code></td><td><span class="tag py">Python</span></td><td>A name pattern: picks muscles and bones by their anatomical names.</td></tr>
+          <tr><td><code>i3 = i * 3</code>, <code>P[i3 + 1]</code></td><td><span class="tag js">JS</span></td><td>Flat arrays: point i's x, y, z sit at positions 3i, 3i+1, 3i+2.</td></tr>
+          <tr><td><code>si[i * 4 + k]</code>, <code>sw[i * 4 + k]</code></td><td><span class="tag js">JS</span></td><td>Point i's k-th bone number and weight (four per point).</td></tr>
+          <tr><td><code>M[b + 12]</code></td><td><span class="tag js">JS</span></td><td>A bone's 4×4 matrix stored as 16 numbers; entries 12–14 are its movement (translation).</td></tr>
+          <tr><td><code>.needsUpdate = true</code></td><td><span class="tag js">three.js</span></td><td>Tells three.js an array changed and must be sent to the graphics card again.</td></tr>
+        </tbody>
+      </table></div>
+      <p>The same idea in both languages, moving every point 2 mm outward along its normal (how the skin is made from the fat surface):</p>
+      <div class="codehead"><span>numpy · one line for all points</span></div>
+      <pre><code class="language-python">SV = SV + normals(SV, ST) * 0.002</code></pre>
+      <div class="codehead"><span>JavaScript · an explicit loop</span></div>
+      <pre><code class="language-javascript">for (let i = 0; i &lt; P.length; i++) P[i] += N[i] * 0.002;</code></pre>
+      <label class="readbox"><input type="checkbox" data-read="patterns"> I've read this chapter</label>
+    </section>
+
+    <!-- ideas -->
+    <section class="ch" id="ideas">
+      <p class="eyebrow">Chapter 10 · Reuse elsewhere</p>
+      <h2>Big ideas you can take to other projects</h2>
+      <p>None of these is specific to 3D bodies. They're the habits that make this project survive constant change, and they're worth copying into anything you build.</p>
+      <div class="ideas"><article class="idea"><span class="inum">01</span><h3>Build once, run many</h3><p><b>Here:</b> Slow, one-off work (fitting, weights, distance grids) happens in Python at build time; the browser only does what must happen every frame.</p><p><b>Elsewhere:</b> A website that pre-renders pages; a game that bakes lighting; a script that pre-computes a lookup table so the app just reads it.</p></article><article class="idea"><span class="inum">02</span><h3>One data file is the contract</h3><p><b>Here:</b> <code>body-rig.js</code> is the only thing the two halves share. Each side can change freely as long as that file's layout stays the same.</p><p><b>Elsewhere:</b> An API between a phone app and a server; a JSON export between two scripts. Write the layout down and change it on purpose.</p></article><article class="idea"><span class="inum">03</span><h3>Generated files are never hand-edited</h3><p><b>Here:</b> Never patch <code>body-rig.js</code> or restore it from a backup: rebuild it. The code plus the inputs is the truth.</p><p><b>Elsewhere:</b> Compiled code, exported PDFs, minified JavaScript. Fix the source, then regenerate.</p></article><article class="idea"><span class="inum">04</span><h3>Write safely, then swap</h3><p><b>Here:</b> Build the text first, write <code>.tmp</code>, then <code>os.replace</code> (lesson 5).</p><p><b>Elsewhere:</b> Any save file, settings file or export that someone depends on.</p></article><article class="idea"><span class="inum">05</span><h3>Fingerprints catch stale results</h3><p><b>Here:</b> The cached MakeHuman fits are keyed by a hash of inputs and code; <code>skin-uv.js</code> carries a fingerprint of the skin it was made for, and the page refuses a mismatch.</p><p><b>Elsewhere:</b> Build caches, downloaded data that might be out of date, "has this file changed since I last processed it?"</p></article><article class="idea"><span class="inum">06</span><h3>Think in whole arrays</h3><p><b>Here:</b> Masks, broadcasting and bincount replace loops over 80,000 points (lessons 8–11).</p><p><b>Elsewhere:</b> Spreadsheet columns, image pixels, sensor logs: anything with lots of rows of the same shape.</p></article><article class="idea"><span class="inum">07</span><h3>Bound your memory with chunks</h3><p><b>Here:</b> <code>nearest()</code> works 256 rows at a time instead of building a 150 GB table (lesson 9).</p><p><b>Elsewhere:</b> Reading a file too big for memory line by line; processing a database in pages.</p></article><article class="idea"><span class="inum">08</span><h3>Grids turn geometry into indexing</h3><p><b>Here:</b> Voxels for the skin, distance grids for bones, grid snapping for decimation: "where is it?" becomes "which cell?".</p><p><b>Elsewhere:</b> Spatial hashing for collision detection in games, map tiles, bucketing times into hours.</p></article><article class="idea"><span class="inum">09</span><h3>Meshes are graphs</h3><p><b>Here:</b> Edges as neighbour pairs give smoothing, heat-diffusion weights and seam paths (lessons 10, 15).</p><p><b>Elsewhere:</b> Social networks, road maps, course prerequisites. Graph tools solve all of them.</p></article><article class="idea"><span class="inum">10</span><h3>Quantise when exactness isn't needed</h3><p><b>Here:</b> Positions as 16-bit whole numbers halve the file with 0.03 mm steps (chapter 8).</p><p><b>Elsewhere:</b> Storing prices in cents, audio at 16 bits, JPEG quality settings: pick the precision you need, not the most you can get.</p></article><article class="idea"><span class="inum">11</span><h3>Measure, then fix, in stages</h3><p><b>Here:</b> Big changes were planned as stages with a measurement or a check in Chrome between each one, so a bad step is caught early and easy to undo.</p><p><b>Elsewhere:</b> Any change you can't easily see working: split it, check each part, keep a way back.</p></article><article class="idea"><span class="inum">12</span><h3>Comments say why, banners say where</h3><p><b>Here:</b> Section banners like <code># ---- skin weights by heat diffusion</code> make a 3,000-line file navigable; comments explain reasons and sources (skinfold studies, ANSUR II), not what the line obviously does.</p><p><b>Elsewhere:</b> Any code someone (including future you) will read in six months.</p></article></div>
+      <label class="readbox"><input type="checkbox" data-read="ideas"> I've read this chapter</label>
+    </section>
+
+    <!-- 9 -->
+    <section class="ch" id="changing">
+      <p class="eyebrow">Chapter 11 · What's new</p>
+      <h2>What's new since the first version of this guide</h2>
+      <p>When this guide was first written (12 Oct 2026), most of this chapter was a plan. Nearly all of it has landed since. Each card says what's in the code now (checked on 4 Nov 2026), which half it touches, and how it works.</p>
+      <div class="road">
+
+        <article class="card">
+          <header><h3>Smooth crotch fill</h3><span class="pill done">In the code</span></header>
+          <p class="meta"><span class="tag py">Python</span> fit_rig.py · "Crotch fill" (≈ line 1210)</p>
+          <p>Below the hips, the trunk's anatomy is handed to the two legs, which left a groove at the front. A low, rounded fill of extra points now bridges the legs in front of the hip joints, like a mannequin. It stops short of the crotch so the legs never web together, stays below the surrounding surface, and leaves the buttock cleft at the back alone.</p>
+        </article>
+
+        <article class="card">
+          <header><h3>Hips that keep their shape</h3><span class="pill done">In the code</span></header>
+          <p class="meta"><span class="tag py">Python</span> fit_rig.py · glute weights (≈ line 721), "thigh twist" (≈ line 2753)</p>
+          <p>The hips used to shrink when a leg swung out or turned. Two fixes landed:</p>
+          <ul>
+            <li><b>Glute weights by position:</b> each glute point follows the thigh by how far along the muscle it sits, from the pelvis (0) to the femur (1). Only the part near the femur follows the thigh, so the belly no longer swings inward.</li>
+            <li><b>Thigh twist knots:</b> like the forearm's, extra bones down the thigh hold back 100, 75, 50 and 25% of a turn, so the skin at the hip isn't wrung.</li>
+          </ul>
+        </article>
+
+        <article class="card">
+          <header><h3>Tattoo skin map</h3><span class="pill done">In the code</span></header>
+          <p class="meta"><span class="tag py">Python</span> tools/uv_atlas.py · <span class="tag js">Browser</span> the Skin map button</p>
+          <p>The skin is cut into regions a tattoo artist would recognise (torso front and back, sleeves split along the inner arm, legs, head, hands, feet, digits) and each is flattened at true scale, so 1 cm on <code>skin-map.png</code> is about 1 cm of skin. Points on seams are stored twice and copied back together every frame.</p>
+        </article>
+
+        <article class="card">
+          <header><h3>Front-only briefs cover</h3><span class="pill drop">Dropped</span></header>
+          <p class="meta"><span class="tag py">Python</span> + <span class="tag js">Browser</span> not built</p>
+          <p>A fabric cover over the crotch was planned and then dropped. Every part of the skin stays bare, so all of it can be planned on and appears in the skin map.</p>
+        </article>
+
+        <article class="card wide">
+          <header><h3>Muscle contraction</h3><span class="pill done">In the code</span></header>
+          <p class="meta"><span class="tag py">Python</span> fit_rig.py · "muscle contraction" (≈ line 3037) stores each muscle's attachments · <span class="tag js">Browser</span> <code>contract()</code> bulges it every pose</p>
+          <p>A muscle keeps its volume. When its two ends get closer, its belly gets fatter; when it's stretched, it gets thinner. Flexing adds more on top (the idea comes from Scheepers et al. 1997). Length is measured between the attachment points, not from a joint angle, because muscles like the biceps, rectus femoris and gastrocnemius cross two joints.</p>
+          <div class="demo" style="margin-top:6px">
+            <canvas id="musCanvas" width="900" height="420" aria-label="Interactive demo: biceps and triceps changing shape as the elbow bends"></canvas>
+            <div class="controls">
+              <label for="mBend">Elbow bend <input id="mBend" type="range" min="0" max="140" value="90"></label>
+              <label for="mFlex">Flex <input id="mFlex" type="range" min="0" max="100" value="30"></label>
+              <span class="readout" id="musReadout"></span>
+            </div>
+            <p class="caption">Crimson is the biceps (front of the arm), teal the triceps (back). Bend the elbow: the biceps' ends come closer, so it gets shorter and fatter; the triceps is stretched around the elbow, so it thins. Belly thickness follows 1 ÷ √(length ÷ rest length), which keeps the volume constant, and Flex adds up to 35% more.</p>
+          </div>
+          <div class="cols">
+            <div>
+              <h4>Built once in Python</h4>
+              <ul>
+                <li>Each muscle's two attachment ends, which rig bone carries each, and its rest length.</li>
+                <li>Per point: how far along the muscle (0–1), which way is "out", how far out, and a belly weight that's 0 at the tendons and highest in the middle.</li>
+                <li><b>Fan muscles</b> (deltoid, pectoralis major, lats, trapezius): length per point, from that point's own origin to the insertion, so each part acts on its own.</li>
+              </ul>
+            </div>
+            <div>
+              <h4>Every pose in the browser</h4>
+              <ul>
+                <li>Stretch = current length ÷ rest length; push each point out by (1/√stretch − 1) × its distance out × belly weight, clamped.</li>
+                <li>Runs after skinning, before collisions and clean-up.</li>
+                <li>The skin and fat get the same offsets through <code>RIG.anchors</code>, even with muscles hidden, so a tattoo on the biceps stretches with it.</li>
+                <li>The Flex slider (0–1, default 0.3).</li>
+              </ul>
+            </div>
+          </div>
+          <div class="tbl"><table>
+            <thead><tr><th>Group</th><th>Muscles</th><th>What to look for</th></tr></thead>
+            <tbody>
+              <tr><td class="num">Arms</td><td>Biceps, brachialis, triceps, brachioradialis, deltoid</td><td>Biceps peaks with the elbow bent and more with the palm up; the triceps "horseshoe" shows with the elbow straight and flexed.</td></tr>
+              <tr><td class="num">Chest</td><td>Pectoralis major (a fan), plus pec minor and serratus if they help</td><td>Fuller with the arms brought forward and together; thinner with the arms out or back; a fold toward the arm with the arms overhead.</td></tr>
+              <tr><td class="num">Hips, legs</td><td>Glute medius, minimus, TFL, glute max; quadriceps, hamstrings, calves</td><td>Side of the hip bulges as the leg swings out (helps the hip fix); the vastus medialis "teardrop" with the knee straight; calves bunch on tiptoe.</td></tr>
+              <tr><td class="num">Back, abs, neck, wrists</td><td>Lats, upper trapezius, abs and obliques, sternocleidomastoid, serratus, wrist muscles</td><td>Shrugs, crunches, side bends, the neck muscle standing out when the head turns.</td></tr>
+            </tbody>
+          </table></div>
+        </article>
+
+        <article class="card wide">
+          <header><h3>Modelled hands, feet and head (MakeHuman)</h3><span class="pill done">In the code</span></header>
+          <p class="meta"><span class="tag py">Python</span> tools/mh_parts.py · fit_rig.py banners "hands and feet: the MakeHuman base mesh's" (≈ line 1380) and "head" (≈ line 1469) · <code>assets/makehuman/</code></p>
+          <p>The old hands were a WebXR palm with separate finger tubes, the toes were tubes too, and the face was an even wrap that looked gaunt. All three now come from the <b>MakeHuman</b> base mesh (CC0), which has knuckles, webbing, nails, toes, eyelids, lips and a nose tip, fitted onto the real anatomy. Lessons 6 and 12 in the Python course walk through parts of this code.</p>
+          <ol class="flow">
+            <li><b>Rough alignment.</b> Matching landmarks on both (wrist, knuckles and fingertips; ankle, heel and toes; skull landmarks for the head). <code>similarity()</code> finds the best move, turn and scale, then <code>rbf_warp()</code> bends it smoothly so every landmark lands exactly.</li>
+            <li><b>Fine fit.</b> A smooth offset nudges the part toward the old surface (a rough guide for thickness) and out of the bones, so it keeps its own detail but sits on our anatomy.</li>
+            <li><b>Join the body.</b> The body is cut at a ring (wrist, ankle, neck), the part at a matching ring, and the gap is bridged with a strip of triangles. The joins are sized to an average man from ANSUR II measurements.</li>
+            <li><b>Keep the layers in step.</b> The fat surface and the skin share point numbers, so the new parts get a matching fat surface and anchors.</li>
+            <li><b>Cache the result.</b> Each fitted part is saved under a fingerprint of its inputs and of <code>mh_parts.py</code> itself, so rebuilds skip the slow fit unless something changed.</li>
+          </ol>
+          <div class="cols three">
+            <div><h4>Hands</h4><p>Fitted to the hand bones, both sides. Keeps the knuckles, the webbing (fingers joined only near their base) and the nails.</p></div>
+            <div><h4>Feet</h4><p>Fitted to the foot and toe bones, with both soles flat on the same floor. Keeps toenails and separate toes past their base.</p></div>
+            <div><h4>Head</h4><p>Fitted to the skull with soft-tissue depths at about 30 landmarks, which <code>tissue_depth.py</code> pools from the C-Table (19 studies, 1,971 people). Eyes and mouth are closed, keeping a natural, normal-looking face.</p></div>
+          </div>
+        </article>
+
+      </div>
+      <label class="readbox"><input type="checkbox" data-read="changing"> I've read this chapter</label>
+    </section>
+
+    <!-- 10 -->
+    <section class="ch" id="claude">
+      <p class="eyebrow">Chapter 12</p>
+      <h2>Working with Claude on this project</h2>
+      <p>Most of the time a change is lost to vague location ("the arm looks off"). The most useful thing you can give is <b>where</b>, <b>when</b> and <b>which half</b>. Use the vocabulary in this guide: a pose name, a layer, a body part, a file and a section banner.</p>
+      <h3>Describe what you see</h3>
+      <ul class="rules">
+        <li><b>The pose:</b> a preset (A-pose, Standing, Star, Reach, Hands behind head) or what you dragged, and roughly how far.</li>
+        <li><b>The layer:</b> Skin, Adipose, Muscles + cartilage or Skeleton, and the Flex setting if muscles look off.</li>
+        <li><b>The exact pose:</b> press <b>Copy pose</b> and paste it into your message, so the same pose can be loaded with Paste pose.</li>
+        <li><b>The spot:</b> anatomical names help: inner elbow, wrist crease, armpit, lower back.</li>
+        <li><b>At rest or only when posed?</b> At rest points to Python (shape). Only when posed points to the browser (movement).</li>
+        <li><b>What it should look like:</b> a reference photo or one sentence on what "right" is.</li>
+      </ul>
+      <h3>Prompts you can copy</h3>
+      <div class="prompts" id="prompts"></div>
+      <h3>House rules that keep things safe</h3>
+      <ul class="rules">
+        <li>Only one Claude session edits <code>fit_rig.py</code>, <code>index.html</code> and <code>body-rig.js</code> at a time. Two sessions overwrote each other's output once.</li>
+        <li>Never restore <code>body-rig.js</code> from a backup: rebuild it. It's generated, so a rebuild is always the truth.</li>
+        <li>After every <code>fit_rig.py</code> run, also run <code>uv_atlas.py</code> so the skin map matches.</li>
+        <li>Big changes go in stages, with a stop after each one, so you can check in Chrome before the next.</li>
+        <li>You check results in Chrome yourself; say so if you do want screenshots.</li>
+      </ul>
+      <label class="readbox"><input type="checkbox" data-read="claude"> I've read this chapter</label>
+    </section>
+
+    <!-- 10 -->
+    <section class="ch" id="glossary">
+      <p class="eyebrow">Chapter 13</p>
+      <h2>Glossary</h2>
+      <label for="gq" class="visually-hidden" style="position:absolute; left:-9999px">Filter terms</label>
+      <input id="gq" class="gfilter" type="search" placeholder="Filter terms, e.g. weight">
+      <dl class="gloss" id="gloss"></dl>
+    </section>
+  </main>
+</div>
+
+<script type="application/json" id="pydata">[{"starter": "def output_folder(argv):\n    out = ...   # your one line\n    return out\n\nprint(output_folder(['uv_atlas.py', 'build']))   # should print build\nprint(output_folder(['uv_atlas.py']))            # should print .", "answer": "def output_folder(argv):\n    out = argv[1] if len(argv) > 1 else '.'   # exactly what uv_atlas.py does\n    return out\n\nprint(output_folder(['uv_atlas.py', 'build']))   # build\nprint(output_folder(['uv_atlas.py']))            # .", "check": "assert output_folder(['x.py', 'build']) == 'build'\nassert output_folder(['x.py']) == '.'\nprint('\u2713 Passed: this is the line at the top of uv_atlas.py')", "numpy": false}, {"starter": "def trimmed_mean(v, cut=0.1):\n    \"\"\"Mean of v without its lowest and highest `cut` share.\"\"\"\n    ...\n\nprint(trimmed_mean([5.1, 4.8, 5.3, 5.0, 250.0, 4.9, 5.2, 5.0, 4.7, 5.1]))   # about 5.05, not 29.5", "answer": "def trimmed_mean(v, cut=0.1):\n    \"\"\"Mean of v without its lowest and highest `cut` share.\"\"\"\n    v = sorted(v)\n    k = int(len(v) * cut)\n    mid = v[k:len(v) - k]\n    return sum(mid) / len(mid)\n\nprint(trimmed_mean([5.1, 4.8, 5.3, 5.0, 250.0, 4.9, 5.2, 5.0, 4.7, 5.1]))", "check": "assert abs(trimmed_mean([5.1, 4.8, 5.3, 5.0, 250.0, 4.9, 5.2, 5.0, 4.7, 5.1]) - 5.05) < 1e-9\nassert trimmed_mean([1, 2, 3]) == 2           # 10% of 3 rounds down to 0: nothing dropped\nassert trimmed_mean([0, 10, 10, 100], cut=0.25) == 10\nprint('\u2713 Passed: the outlier no longer drags the average')", "numpy": false}, {"starter": "hdr = ['', 'Name', 'Score', '', 'Year']\nrows = [['', 'Ana', '91.25', '', '2'], ['', 'Bo', '78.5', '', '1']]\n\ncol = ...   # your comprehension\n\nfor r in rows:\n    print(...)   # e.g. 'Ana       91.2' ", "answer": "hdr = ['', 'Name', 'Score', '', 'Year']\nrows = [['', 'Ana', '91.25', '', '2'], ['', 'Bo', '78.5', '', '1']]\n\ncol = {h: i for i, h in enumerate(hdr) if h}\n\nfor r in rows:\n    print(f\"{r[col['Name']]:8s}{float(r[col['Score']]):6.1f}\")", "check": "assert col == {'Name': 1, 'Score': 2, 'Year': 4}, col\nassert f\"{'Bo':8s}{78.5:6.1f}\" == 'Bo        78.5'\nprint('\u2713 Passed: columns found by name')", "numpy": false}, {"starter": "import csv, io\n\nTEXT = \"\"\"Sex,Age (yrs),g\nM,25,5.5\nM,unknown,9.0\nM,40,\nM,16,4.0\nM,33,6.1\nF,29,5.9\n\"\"\"\n\ndef mean_depth(text, sex='M', min_age=18):\n    rows = list(csv.reader(io.StringIO(text)))\n    col = {h: i for i, h in enumerate(rows[0]) if h}\n    vals = []\n    ...   # loop over rows[1:] like depths() does\n    return sum(vals) / len(vals), len(vals)\n\nprint(mean_depth(TEXT))   # should be about (5.8, 2)", "answer": "import csv, io\n\nTEXT = \"\"\"Sex,Age (yrs),g\nM,25,5.5\nM,unknown,9.0\nM,40,\nM,16,4.0\nM,33,6.1\nF,29,5.9\n\"\"\"\n\ndef mean_depth(text, sex='M', min_age=18):\n    rows = list(csv.reader(io.StringIO(text)))\n    col = {h: i for i, h in enumerate(rows[0]) if h}\n    vals = []\n    for r in rows[1:]:\n        try: age = float(r[col['Age (yrs)']])\n        except ValueError: continue\n        if r[col['Sex']] != sex or age < min_age: continue\n        cell = r[col['g']]\n        if cell.strip():\n            try: vals.append(float(cell))\n            except ValueError: pass\n    return sum(vals) / len(vals), len(vals)\n\nprint(mean_depth(TEXT))", "check": "m, n = mean_depth(TEXT)\nassert n == 2 and abs(m - 5.8) < 1e-9, (m, n)\nassert mean_depth(TEXT, sex='F') == (5.9, 1)\nprint('\u2713 Passed: unknown ages, blanks and under-18s all skipped')", "numpy": false}, {"starter": "import json, os\n\ndef save_json(path, obj):\n    ...\n\nsave_json('settings.json', {'flex': 0.3, 'layers': ['skin', 'muscles']})\nprint(open('settings.json').read())", "answer": "import json, os\n\ndef save_json(path, obj):\n    text = json.dumps(obj)            # fails here? the old file is untouched\n    with open(path + '.tmp', 'w') as fh:\n        fh.write(text)\n    os.replace(path + '.tmp', path)   # swapped in all at once\n\nsave_json('settings.json', {'flex': 0.3, 'layers': ['skin', 'muscles']})\nprint(open('settings.json').read())", "check": "import json, os\nsave_json('t.json', {'a': 1}); save_json('t.json', {'a': 2})\nassert json.load(open('t.json')) == {'a': 2}\nassert not os.path.exists('t.json.tmp')\ntry: save_json('t.json', {'bad': object()})\nexcept TypeError: pass\nassert json.load(open('t.json')) == {'a': 2}, 'a failed save must leave the old file alone'\nprint('\u2713 Passed: a failed save left the old file intact')", "numpy": false}, {"starter": "import hashlib, time\n\nCACHE = {}\n\ndef cached(fn, *args):\n    key = ...\n    ...\n\ndef slow_square(x):\n    time.sleep(0.5); return x * x\n\nt = time.time(); print(cached(slow_square, 12), f'{time.time() - t:.2f}s')   # slow\nt = time.time(); print(cached(slow_square, 12), f'{time.time() - t:.2f}s')   # instant", "answer": "import hashlib, time\n\nCACHE = {}\n\ndef cached(fn, *args):\n    key = hashlib.sha1((fn.__name__ + repr(args)).encode()).hexdigest()[:16]\n    if key not in CACHE:\n        CACHE[key] = fn(*args)\n    return CACHE[key]\n\ndef slow_square(x):\n    time.sleep(0.5); return x * x\n\nt = time.time(); print(cached(slow_square, 12), f'{time.time() - t:.2f}s')   # slow\nt = time.time(); print(cached(slow_square, 12), f'{time.time() - t:.2f}s')   # instant", "check": "calls = []\ndef f(x): calls.append(x); return x + 1\nCACHE.clear()\nassert cached(f, 1) == 2 and cached(f, 1) == 2 and cached(f, 2) == 3\nassert calls == [1, 2], calls\nassert all(len(k) <= 40 for k in CACHE)\nprint('\u2713 Passed: computed once per distinct input')", "numpy": false}, {"starter": "import struct, json\n\ndef write(values):\n    h = json.dumps({'n': len(values)}).encode()\n    return struct.pack('<I', len(h)) + h + struct.pack(f'<{len(values)}f', *values)\n\ndef read(blob):\n    ...   # header length, header, then the floats\n\nblob = write([1.5, -2.0, 3.25])\nprint(len(blob), 'bytes ->', read(blob))", "answer": "import struct, json\n\ndef write(values):\n    h = json.dumps({'n': len(values)}).encode()\n    return struct.pack('<I', len(h)) + h + struct.pack(f'<{len(values)}f', *values)\n\ndef read(blob):\n    hl = struct.unpack('<I', blob[:4])[0]\n    header = json.loads(blob[4:4 + hl])\n    off = 4 + hl\n    return list(struct.unpack_from(f\"<{header['n']}f\", blob, off))\n\nblob = write([1.5, -2.0, 3.25])\nprint(len(blob), 'bytes ->', read(blob))", "check": "assert read(write([1.5, -2.0, 3.25])) == [1.5, -2.0, 3.25]\nassert read(write([])) == []\nprint('\u2713 Passed: same layout idea as tools/meshes.py')", "numpy": false}, {"starter": "import numpy as np\nrng = np.random.default_rng(0)\nP = rng.uniform(-1, 1, (1000, 3))\n\nn_left = ...\ninside = ...\n\nprint(P.shape, n_left, inside.shape)", "answer": "import numpy as np\nrng = np.random.default_rng(0)\nP = rng.uniform(-1, 1, (1000, 3))\n\nn_left = int((P[:, 0] > 0).sum())             # True counts as 1\nlo, hi = np.array([-0.5] * 3), np.array([0.5] * 3)\ninside = P[np.all((P >= lo) & (P <= hi), 1)]\n\nprint(P.shape, n_left, inside.shape)", "check": "assert n_left == sum(1 for p in P if p[0] > 0)\nassert inside.shape[1] == 3 and len(inside) == sum(1 for p in P if all(-0.5 <= c <= 0.5 for c in p))\nprint('\u2713 Passed:', n_left, 'left,', len(inside), 'inside (about 1/8 of 1000, as expected)')", "numpy": true}, {"starter": "import numpy as np\nrng = np.random.default_rng(1)\nQ, pool = rng.uniform(0, 1, (500, 2)), rng.uniform(0, 1, (300, 2))\n\ndef nearest_2d(Q, pool, chunk=64):\n    out = np.zeros(len(Q), int)\n    ...\n    return out\n\nprint(nearest_2d(Q, pool)[:10])", "answer": "import numpy as np\nrng = np.random.default_rng(1)\nQ, pool = rng.uniform(0, 1, (500, 2)), rng.uniform(0, 1, (300, 2))\n\ndef nearest_2d(Q, pool, chunk=64):\n    out = np.zeros(len(Q), int)\n    for i in range(0, len(Q), chunk):\n        out[i:i + chunk] = ((Q[i:i + chunk, None] - pool[None]) ** 2).sum(-1).argmin(1)\n    return out\n\nprint(nearest_2d(Q, pool)[:10])", "check": "slow = [min(range(len(pool)), key=lambda j: ((q - pool[j]) ** 2).sum()) for q in Q[:120]]\nassert list(nearest_2d(Q, pool)[:120]) == slow\nprint('\u2713 Passed: matches the slow double loop')", "numpy": true}, {"starter": "import numpy as np\nsid = np.array([0, 2, 1, 0, 2, 2, 1, 0])\npts = np.array([9., 7., 8., 10., 6., 9., 7., 8.])\n\ntotal = ...\ncount = ...\navg = ...\n\nprint(total, count, avg)", "answer": "import numpy as np\nsid = np.array([0, 2, 1, 0, 2, 2, 1, 0])\npts = np.array([9., 7., 8., 10., 6., 9., 7., 8.])\n\ntotal = np.bincount(sid, weights=pts)\ncount = np.bincount(sid)\navg = total / count\n\nprint(total, count, avg)", "check": "assert np.allclose(total, [27, 15, 22]) and list(count) == [3, 2, 3]\nassert np.allclose(avg, [9, 7.5, 22 / 3])\nalt = np.zeros(3); np.add.at(alt, sid, pts); assert np.allclose(alt, total)\nprint('\u2713 Passed: np.add.at gives the same totals')", "numpy": true}, {"starter": "import numpy as np\nrng = np.random.default_rng(2)\nV = rng.uniform(0, 0.05, (2000, 2))      # 2000 points in a 5 cm square\ncell = 0.01\n\n...\nQ = ...   # one averaged point per occupied cell\n\nprint(len(V), '->', len(Q))", "answer": "import numpy as np\nrng = np.random.default_rng(2)\nV = rng.uniform(0, 0.05, (2000, 2))      # 2000 points in a 5 cm square\ncell = 0.01\n\nkey = np.floor(V / cell).astype(np.int64)\n_, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel()\ncnt = np.bincount(inv)\nQ = np.stack([np.bincount(inv, V[:, c]) / cnt for c in range(2)], 1)\n\nprint(len(V), '->', len(Q))", "check": "assert Q.shape[1] == 2 and len(Q) == len({tuple(k) for k in np.floor(V / cell).astype(int)})\nassert np.allclose(Q.mean(0), V.mean(0), atol=0.004)\nprint('\u2713 Passed:', len(Q), 'occupied cells, each one averaged point')", "numpy": true}, {"starter": "import numpy as np\n\ndef make_scaler(values):\n    lo, hi = ...\n    ...\n    return to01, back\n\nto01, back = make_scaler(np.array([1.2, 3.4, 0.4, 2.0]))\nx = to01(np.array([0.4, 1.9, 3.4]))\nprint(x, back(x))", "answer": "import numpy as np\n\ndef make_scaler(values):\n    lo, hi = values.min(), values.max()\n    to01 = lambda v: (v - lo) / (hi - lo)\n    def back(u):\n        return lo + u * (hi - lo)\n    return to01, back\n\nto01, back = make_scaler(np.array([1.2, 3.4, 0.4, 2.0]))\nx = to01(np.array([0.4, 1.9, 3.4]))\nprint(x, back(x))", "check": "t, b = make_scaler(np.array([1.2, 3.4, 0.4, 2.0]))\nassert np.allclose(t(np.array([0.4, 3.4])), [0, 1]) and np.allclose(b(t(np.array([1.9]))), [1.9])\nprint('\u2713 Passed: each function remembers lo and hi (a closure)')", "numpy": true}, {"starter": "import re\nnames = ['Gluteus_maximus_musclel', 'Deltoid_muscler', 'Biceps_brachii_muscle_(long_head)r',\n         'Tensor_fasciae_latae_musclel', 'biceps_femoris_musclel', 'Trapezius_muscler']\n\nPAT = re.compile(...)\nsides = ...   # {name: '.L' or '.R'} for the matching names only\n\nprint(sides)", "answer": "import re\nnames = ['Gluteus_maximus_musclel', 'Deltoid_muscler', 'Biceps_brachii_muscle_(long_head)r',\n         'Tensor_fasciae_latae_musclel', 'biceps_femoris_musclel', 'Trapezius_muscler']\n\nPAT = re.compile(r'Gluteus|Biceps', re.I)\nsides = {n: '.L' if n.rstrip(')')[-1] == 'l' else '.R' for n in names if PAT.search(n)}\n\nprint(sides)", "check": "assert set(sides) == {'Gluteus_maximus_musclel', 'Biceps_brachii_muscle_(long_head)r', 'biceps_femoris_musclel'}, set(sides)\nassert sides['Biceps_brachii_muscle_(long_head)r'] == '.R' and sides['biceps_femoris_musclel'] == '.L'\nprint('\u2713 Passed: 3 parts picked, sides read from the last letter')", "numpy": false}, {"starter": "class Base:\n    def __init__(self): self.saved = []\n    def log(self, msg): print('LOG', msg)\n    def handle(self, method, path, body=None):\n        self.log(f'{method} {path}')\n        return getattr(self, 'do_' + method)(path, body)\n\nclass Echo(Base):\n    ...\n\ne = Echo()\nprint(e.handle('GET', '/convert.html'))\ne.handle('POST', '/save', b'mesh bytes')\nprint(e.saved)", "answer": "class Base:\n    def __init__(self): self.saved = []\n    def log(self, msg): print('LOG', msg)\n    def handle(self, method, path, body=None):\n        self.log(f'{method} {path}')\n        return getattr(self, 'do_' + method)(path, body)\n\nclass Echo(Base):\n    def log(self, msg): pass\n\n    def do_GET(self, path, body):\n        return 'page: ' + path\n\n    def do_POST(self, path, body):\n        self.saved.append(body)\n\ne = Echo()\nprint(e.handle('GET', '/convert.html'))\ne.handle('POST', '/save', b'mesh bytes')\nprint(e.saved)", "check": "import io, contextlib\ne = Echo(); buf = io.StringIO()\nwith contextlib.redirect_stdout(buf):\n    r = e.handle('GET', '/a'); e.handle('POST', '/s', b'x')\nassert r == 'page: /a' and e.saved == [b'x'] and buf.getvalue() == '', 'log should print nothing'\nprint('\u2713 Passed: overriding only what changes')", "numpy": false}, {"starter": "#        point: 0   1  2  3  4  5\npred =        [-1,  0, 1, 1, 3, 4]\n\ndef walk_back(pred, end):\n    path = [end]\n    ...\n    return path\n\nprint(walk_back(pred, 5))   # [0, 1, 3, 4, 5]", "answer": "#        point: 0   1  2  3  4  5\npred =        [-1,  0, 1, 1, 3, 4]\n\ndef walk_back(pred, end):\n    path = [end]\n    while pred[path[-1]] >= 0:\n        path.append(pred[path[-1]])\n    return path[::-1]          # it was built end -> start\n\nprint(walk_back(pred, 5))   # [0, 1, 3, 4, 5]", "check": "assert walk_back(pred, 5) == [0, 1, 3, 4, 5] and walk_back(pred, 2) == [0, 1, 2] and walk_back(pred, 0) == [0]\nprint('\u2713 Passed: the same loop uv_atlas.py uses to trace a seam')", "numpy": false}]</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script>
+(() => {
+  // ---------- syntax colouring ----------
+  try { document.querySelectorAll('pre code[class^="language-"]').forEach(el => window.hljs && hljs.highlightElement(el)); } catch (e) {}
+
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  // ---------- copy buttons ----------
+  function copyText(text, btn) {
+    const done = () => { const t = btn.textContent; btn.textContent = 'Copied'; setTimeout(() => btn.textContent = t, 1400); };
+    try {
+      navigator.clipboard.writeText(text).then(done, () => selectFallback());
+    } catch (e) { selectFallback(); }
+    function selectFallback() {
+      const el = document.getElementById(btn.dataset.copy);
+      if (!el) return;
+      const r = document.createRange(); r.selectNodeContents(el);
+      const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+      btn.textContent = 'Selected: press ⌘C';
+    }
+  }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-copy]');
+    if (b) { const el = document.getElementById(b.dataset.copy); if (el) copyText(el.innerText, b); }
+  });
+
+  // ---------- build steps ----------
+  const BUILD = [
+    { t: 'Convert the anatomy files', where: 'tools/convert_fbx.py · tools/meshes.py',
+      what: 'Z-Anatomy ships as .fbx files that Python can\'t read easily. convert_fbx.py starts a tiny web server on your Mac, opens a hidden Chrome window that uses three.js\'s FBX reader, and has the page send back every mesh. It saves them in a simple format: a header saying which part is which, then all the points as 32-bit decimals, then all the triangles as 32-bit whole numbers. meshes.py reads that back.',
+      why: 'Reusing a browser library avoids installing Blender or an FBX SDK. It only runs when the anatomy source changes.' },
+    { t: 'Load bones and muscles, in metres', where: 'fit_rig.py · banner "Z-Anatomy" (≈ line 28)',
+      what: 'Z-Anatomy is in centimetres in its own frame. A fixed scale and offset (Z_SCALE, Z_OFFSET), measured by matching 10 bone centres, puts it in metres with y up and z forward. Name patterns (BONE_RE, HIDDEN, TENDON) pick which bones and muscles to keep, and drop deep muscles that never shape the outside.',
+      why: 'Every later number (fat thickness, tattoo size) assumes real-world metres.' },
+    { t: 'Find the joints and open the arms', where: 'fit_rig.py · banner "landmarks" (≈ line 121)',
+      what: 'Joint centres are measured from the real bones: the ball of the humerus, the elbow, each knuckle, the hip sockets and so on. The arms are swung 35° out from the sides (ARM_OUT) so the body is built in an A-pose with open armpits.',
+      why: 'Building skin with arms against the body would glue the arm to the chest.' },
+    { t: 'Borrow a rig and move it onto the skeleton', where: 'fit_rig.py · banners "base mesh (glTF)", "target joints" (≈ lines 167, 236)',
+      what: 'A CC0 "Male Base Mesh" comes with a ready rig: a named bone hierarchy (spine, shoulder.L, forearm.L, f_index.01.L …). Only the rig is used. Each rig joint is moved onto the matching real joint, and each bone is turned to point along the real bone.',
+      why: 'Naming and parenting dozens of bones by hand is error-prone; a standard rig gives sensible names and a known hierarchy.' },
+    { t: 'Attach every real bone to a rig bone', where: 'fit_rig.py · banners "which rig bone each real bone belongs to", "skeleton bones attached" (≈ lines 302, 654)',
+      what: 'rig_bone_for() reads each anatomical name, e.g. "Proximal_phalanx_of_second_finger" becomes f_index.01, and the bone then moves 100% with that rig bone.',
+      why: 'Bones are rigid; only skin and muscle need blended weights.' },
+    { t: 'Weight each muscle to the joints it spans', where: 'fit_rig.py · banner "muscles: load, thin out, weight" (≈ line 341)',
+      what: 'Each muscle point gets weights for the bones on either side of the joint it crosses. Special rules handle muscles that ride the shoulder blade, the glutes (which follow the thigh only near the femur), and the lats and pecs, which reach to the arm through helper bones (arm_pull).',
+      why: 'A biceps must stretch from shoulder to forearm, not ride along with one bone.' },
+    { t: 'Grow fat and skin around the anatomy', where: 'fit_rig.py · banner "skin built from the anatomy itself" (≈ line 812) · envelope.py',
+      what: 'Everything inside the muscles and bones becomes voxels, grown by a fat layer and turned into one smooth surface (chapter 7). The body is built in pieces (trunk, head, each arm and leg) that blend softly where they meet; the legs are never blended with each other. Fat thickness varies by region from skinfold studies (BASE_T), and the buttock shaping. A low "crotch fill" bridges the legs at the front (the buttock cleft at the back is left alone). The wrists, ankles and neck are sized to an average man from ANSUR II measurements. The skin is the fat surface moved 2 mm out (real skin is about 1.5–2 mm), so the two share point numbers.',
+      why: 'Skin grown from real anatomy gets real proportions without sculpting.' },
+    { t: 'Hands, feet and head from MakeHuman', where: 'fit_rig.py · banners "hands and feet: the MakeHuman base mesh\'s", "head" (≈ lines 1380, 1469) · mh_parts.py · tissue_depth.py',
+      what: 'The MakeHuman base mesh\'s hands, feet and head are lined up with our joints (a similarity transform, then a smooth RBF warp), nudged out of the bones, and bridged onto the body at the wrists, ankles and neck. The head uses face soft-tissue depths pooled from the C-Table. Each fitted part is cached under a fingerprint of its inputs and code.',
+      why: 'Voxels at 3 mm can\'t make knuckles, nails or eyelids. A modelled part keeps its detail; only a smooth offset is added.' },
+    { t: 'Cartilage, muscle order and layering', where: 'fit_rig.py · banners "cartilage layer", "every muscle hangs off the skeleton", "muscle layering" (≈ lines 2095–2297)',
+      what: 'A cartilage layer fills hands, feet, ears and nose. Muscles record which muscle lies under which (lats over serratus and teres) so the order can be enforced when posed.',
+      why: 'Without recorded order, a posed lat can sink through the muscles under it.' },
+    { t: 'Skin weights by heat diffusion', where: 'fit_rig.py · banner "skin weights by heat diffusion" (≈ line 2375)',
+      what: 'Each skin point is "warmed" by the nearest bone it can see from inside the body, and a heat equation spreads the warmth over the surface. The result is smooth weights across every joint (the Pinocchio method). It\'s solved on a 1 cm coarse copy for speed and carried back to every point.',
+      why: 'Copying weights from muscles left sharp jumps at the armpit and hip that folded the skin.' },
+    { t: 'Forearm and thigh twist', where: 'fit_rig.py · banner "forearm twist" and "thigh twist" (≈ lines 2653, 2753)',
+      what: 'A radius bone that rolls around the ulna, plus twist "knots" at 25%, 50%, 75% and 100% down the forearm, so turning the palm spreads along the whole forearm instead of wringing the wrist. The thigh got the same treatment for turning the leg in or out.',
+      why: 'Twisting only at the wrist made the candy-wrapper pinch.' },
+    { t: 'Precompute what the page needs at runtime', where: 'fit_rig.py · banners "optimized centers of rotation", "bone distance grids", "body segment shapes" (≈ lines 2844–3036)',
+      what: 'For every point, a center of rotation for the better skinning. For every bone, a 3D grid of distances to its surface, used to push things out of bones. For every body segment, a smooth shape for creases at joints.',
+      why: 'These are expensive to compute but cheap to look up, so Python does them once.' },
+    { t: 'Muscle contraction data', where: 'fit_rig.py · banner "muscle contraction" (≈ line 3037)',
+      what: 'For each contracting muscle: its two attachment ends and which rig bone carries each, and per point how far along the muscle it sits, how far out from the centre line, and a belly weight. Fan muscles (deltoid, pecs, glutes) get an origin per point.',
+      why: 'The browser can then measure each muscle\'s length every pose and bulge it, keeping its volume (chapter 11).' },
+    { t: 'Write body-rig.js', where: 'fit_rig.py · banner "write" (≈ line 3201)',
+      what: 'Everything is packed (chapter 8) into one object and written as "window.BODY_RIG = {…}". It\'s written to a .tmp file first and renamed at the end, so a crash never leaves a half-written file (Python lesson 5).',
+      why: 'One file, loadable with a plain script tag, works from file:// with no server.' },
+    { t: 'Build the skin map (separate tool)', where: 'tools/uv_atlas.py → skin-uv.js, skin-map.js, skin-map.png',
+      what: 'Reads body-rig.js (never changes it), repairs the skin mesh, cuts it into regions along artist-friendly seams, flattens each one at true scale with SLIM (libigl), and writes the map plus a printable 1 cm-grid template.',
+      why: 'Kept separate so the two builders can\'t overwrite each other; a fingerprint stops a stale map being used.' },
+  ];
+
+
+  function stepper(rootId, data) {
+    const root = document.getElementById(rootId);
+    const list = root.querySelector('.steps'), panel = root.querySelector('.detail');
+    let cur = 0;
+    data.forEach((s, i) => {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.type = 'button'; b.setAttribute('role', 'tab'); b.id = `${rootId}-t${i}`;
+      b.innerHTML = `<span class="n">${String(i + 1).padStart(2, '0')}</span><span>${esc(s.t)}</span>`;
+      b.addEventListener('click', () => show(i));
+      b.addEventListener('keydown', e => {
+        if (e.key === 'ArrowDown') { e.preventDefault(); show(Math.min(i + 1, data.length - 1), true); }
+        if (e.key === 'ArrowUp') { e.preventDefault(); show(Math.max(i - 1, 0), true); }
+      });
+      li.appendChild(b); list.appendChild(li);
+    });
+    function show(i, focus) {
+      cur = i; const s = data[i];
+      list.querySelectorAll('button').forEach((b, j) => { b.setAttribute('aria-selected', j === i); b.tabIndex = j === i ? 0 : -1; });
+      panel.innerHTML = `<div class="where">${esc(s.where)}</div><h3>${esc(s.t)}</h3><p>${esc(s.what)}</p><p class="why"><b>Why:</b> ${esc(s.why)}</p>
+        <div class="nav"><button class="btn" type="button" data-d="-1" ${i === 0 ? 'disabled' : ''}>Previous</button>
+        <button class="btn primary" type="button" data-d="1" ${i === data.length - 1 ? 'disabled' : ''}>Next step</button>
+        <span class="readout" style="align-self:center">${i + 1} of ${data.length}</span></div>`;
+      panel.querySelectorAll('[data-d]').forEach(b => b.addEventListener('click', () => show(cur + +b.dataset.d)));
+      if (focus) list.querySelectorAll('button')[i].focus();
+    }
+    show(0);
+  }
+  stepper('buildStepper', BUILD);
+
+  // ---------- prompts ----------
+  const PROMPTS = [
+    { t: 'Report a visual problem', p: 'In Chrome, in the [preset / what I dragged] pose, with the [Skin / Muscles] layer on, the [body part] [what you see, e.g. pokes through / folds / looks too thin]. At rest it [looks fine / also looks wrong]. It should look like [one sentence or reference]. Find the cause, tell me which file and section it\'s in, fix it, rebuild if needed, and tell me what to check.' },
+    { t: 'Change the body\'s shape', p: 'In tools/fit_rig.py, in the section "[banner name, e.g. skin built from the anatomy itself]", change [what] so that [goal, e.g. the calves are 3 mm fuller]. Rebuild with fit_rig.py and uv_atlas.py, open index.html, and tell me what changed and where to look.' },
+    { t: 'Change how something moves', p: 'In index.html, [the joint limits / kinetic chain / collisions / a preset pose]: change [what] so that [goal]. Keep dragging smooth. Tell me what you changed and how to try it.' },
+    { t: 'Explain a piece of code', p: 'Explain [function name, e.g. cpuSkinCoR in index.html] line by line in plain terms. Assume I know basic Python and JavaScript but not 3D maths. Then show me one small change I could make myself to see its effect.' },
+    { t: 'Teach me with this project', p: 'Using code from this project, teach me [a Python idea, e.g. numpy broadcasting / classes / regular expressions]. Show me a real snippet from tools/, explain it line by line, tell me how I\'d use the same idea in a different kind of project, and give me one small exercise with a check I can run. Don\'t change any project files.' },
+    { t: 'Plan before building', p: 'Before changing any code, research how to [goal], look at how the project does it today ([file / section]), and give me a staged plan with what each stage changes and how I\'ll check it. Don\'t edit anything yet.' },
+  ];
+  const pr = document.getElementById('prompts');
+  PROMPTS.forEach((x, i) => {
+    const d = document.createElement('div'); d.className = 'prompt';
+    d.innerHTML = `<header><b>${esc(x.t)}</b><button class="btn small" type="button" data-copy="pr${i}">Copy</button></header><pre id="pr${i}">${esc(x.p)}</pre>`;
+    pr.appendChild(d);
+  });
+
+  // ---------- glossary ----------
+  const GLOSS = [
+    ['Mesh', 'A surface made of points and the triangles between them. Stored as two arrays.'],
+    ['Point (vertex)', 'One x, y, z position on a mesh. The skin has about 80,500.'],
+    ['Triangle (index)', 'Three point numbers. Triangles share points, which is what makes the surface connected.'],
+    ['Normal', 'The direction a surface faces at a point. Used for lighting and for pushing things outward.'],
+    ['Bone / joint', 'A rig bone is an invisible handle you pose; its start is the joint it turns around.'],
+    ['Rest pose', 'The pose everything was built in (the A-pose). All movement is measured from it.'],
+    ['Weights', 'How much each bone moves a point. Up to four per point, adding up to 1.'],
+    ['Skinning', 'Moving points with their bones, using the weights.'],
+    ['Linear blend skinning', 'Plain blending: average where each bone would move the point. Fast, but pinches at bends.'],
+    ['Center of rotation', 'A per-point pivot used by the better skinning so bends and twists keep their volume.'],
+    ['Quaternion', 'Four numbers that describe a rotation; easier to blend smoothly than angles.'],
+    ['Inverse kinematics (IK)', 'Working backwards from "put the hand here" to how the elbow and shoulder must turn.'],
+    ['Swing / twist', 'A joint\'s rotation split into where the bone points (swing) and the turn around it (twist), limited separately.'],
+    ['Kinetic chain', 'Automatic movement added to other joints, like the shoulder blade following the arm.'],
+    ['Voxel', 'A tiny cube in a 3D grid, 3 mm here. Like a 3D pixel.'],
+    ['Surface nets', 'A way to pull a smooth surface out of a voxel grid, one point per cube the surface passes through.'],
+    ['Distance grid (SDF)', 'A voxel grid where each cube stores its distance to a shape. Tells you how far inside a bone a point is and which way is out.'],
+    ['Heat diffusion weights', 'Weights found by letting "heat" from each bone spread across the skin (Pinocchio method).'],
+    ['Implicit skinning', 'Using smooth shapes per body segment so skin forms a crease where segments press together.'],
+    ['ARAP', '"As rigid as possible": moving a patch of surface while keeping its local shape.'],
+    ['Taubin smoothing', 'Smoothing that alternates a small inward and outward step so the surface doesn\'t shrink.'],
+    ['Base64', 'Writing raw bytes as letters, so binary arrays can sit inside a .js text file.'],
+    ['Quantization (q16)', 'Storing each coordinate as a whole number 0–65,535 in the mesh\'s box: half the size, ~0.03 mm steps.'],
+    ['Typed array', 'A fast JavaScript array of one number type (Float32Array, Uint16Array…), used for all mesh data.'],
+    ['UV / skin map', 'A flat 2D position for every skin point, so a flat image (a tattoo) can be wrapped onto the body.'],
+    ['Seam', 'A cut line in the skin map. Points on it are stored twice, once per side.'],
+    ['three.js', 'The JavaScript 3D library that draws everything; loaded from a CDN via the importmap at the top of index.html.'],
+    ['numpy', 'The Python library for fast maths on whole arrays at once; the backbone of fit_rig.py.'],
+    ['libigl', 'A geometry library used by uv_atlas.py for flattening (SLIM) and mesh repairs.'],
+    ['A-pose', 'Arms angled out about 35° from the body, so the armpits are open when the skin is built.'],
+    ['Muscle contraction', 'Changing a muscle\'s shape with its length: shorter means a fatter belly, longer a thinner one, keeping its volume.'],
+    ['Attachments (origin / insertion)', 'Where a muscle meets its bones. The distance between them is the muscle\'s length.'],
+    ['Belly weight', 'How much a point of a muscle swells: none at the tendons, most in the middle.'],
+    ['Fan muscle', 'A muscle whose fibres spread from a long origin to one insertion (pec, deltoid, lats), so each part changes length differently.'],
+    ['Flex', 'The slider that adds effort on top of the length effect: more bulge and a tighter shape.'],
+    ['Twist knots', 'Extra bones along a limb that share out its twist (the forearm and the thigh have them).'],
+    ['Crotch fill', 'A low, rounded fill at the front of the pelvis so the legs blend into one smooth surface there.'],
+    ['MakeHuman', 'An open-source human modeller whose base mesh is CC0; the source of the hands, feet and head.'],
+    ['CC0', 'A licence that gives something to the public domain: free to use, change and share without credit.'],
+    ['RBF warp', 'A smooth deformation that moves a mesh so chosen landmarks land on target points, bending everything in between gently.'],
+    ['Non-rigid ICP', 'Repeatedly pulling a mesh toward a target surface while keeping it smooth, so it takes the target\'s shape but keeps its own detail.'],
+    ['Soft-tissue depth (C-Table / T-Table)', 'Published thickness of the face\'s skin, fat and muscle at standard skull landmarks, used in forensic face reconstruction. tissue_depth.py pools the per-person C-Table itself.'],
+    ['ANSUR II', 'A large US Army body-measurement survey; its averages size the wrists, ankles and neck.'],
+    ['Python course terms', 'See the lessons in chapter 3 for: module, argv, docstring, comprehension, f-string, exception, atomic write, hash, pickle, struct, mask, broadcasting, closure, regular expression, subclass, thread.'],
+    ['Mask', 'A True/False array used to pick rows: P[P[:, 0] > 0] keeps the left-side points (lesson 8).'],
+    ['Broadcasting', 'numpy stretching size-1 axes so arrays of different shapes combine, e.g. every query minus every pool point (lesson 9).'],
+    ['Closure', 'A function that remembers values from where it was made, like the warp returned by rbf_warp (lesson 12).'],
+    ['Atomic write', 'Write to a temporary file, then rename it into place, so readers never see half a file (lesson 5).'],
+    ['Hash / fingerprint', 'A short code computed from data; any change to the data changes it. Used for caches and stale-file checks (lesson 6).'],
+    ['Virtual environment (.venv)', 'A private Python install for one project, with its own packages (lesson 1).'],
+    ['Pyodide', 'Python compiled to run inside a web browser; this guide uses it to run the exercises.'],
+  ];
+  const gl = document.getElementById('gloss');
+  function drawGloss(q) {
+    q = (q || '').toLowerCase();
+    gl.innerHTML = GLOSS.filter(([t, d]) => !q || (t + ' ' + d).toLowerCase().includes(q))
+      .map(([t, d]) => `<dt>${esc(t)}</dt><dd>${esc(d)}</dd>`).join('') || '<dt>No match</dt><dd>Try a shorter word.</dd>';
+  }
+  drawGloss(''); document.getElementById('gq').addEventListener('input', e => drawGloss(e.target.value));
+
+  // ---------- quantization calculator ----------
+  const qin = document.getElementById('qrange'), qout = document.getElementById('qout');
+  function q() {
+    const r = Math.max(0.01, +qin.value || 0);
+    const step = r / 65535 * 1000;
+    qout.innerHTML = `One step = ${r.toFixed(2)} m ÷ 65,535 = <b>${step.toFixed(4)} mm</b>. A human hair is about 0.07 mm.`;
+  }
+  qin.addEventListener('input', q); q();
+
+  // ---------- Python course: exercises run in the page with Pyodide (loaded on the first Run) ----------
+  const PYDATA = JSON.parse(document.getElementById('pydata').textContent);
+  const PYODIDE = 'https://cdn.jsdelivr.net/pyodide/v0.26.4/full/';
+  let pyReady = null, npReady = null;
+  function loadPy() {
+    if (!pyReady) pyReady = new Promise((res, rej) => {
+      const sc = document.createElement('script');
+      sc.src = PYODIDE + 'pyodide.js';
+      sc.onload = () => loadPyodide({ indexURL: PYODIDE }).then(res, rej);
+      sc.onerror = () => { pyReady = null; rej(new Error('offline')); };
+      document.head.appendChild(sc);
+    });
+    return pyReady;
+  }
+  const lastLine = t => t.trim().split('\n').filter(Boolean).pop() || t;
+  function cleanTrace(msg) {
+    // keep the learner's own lines, drop Pyodide's internal frames
+    const lines = msg.split('\n'), out = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (/File "\/lib\/|_pyodide|pyodide\/|^\s*\^+\s*$/.test(lines[i])) { if (/File "/.test(lines[i])) i++; continue; }
+      out.push(lines[i]);
+    }
+    return out.join('\n').replace(/File "<exec>"/g, 'Your code').trim();
+  }
+  const KEYED = 'tp-py-code';
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEYED) || '{}') || {}; } catch (e) { saved = {}; }
+  function remember(n, code) { saved[n] = code; try { localStorage.setItem(KEYED, JSON.stringify(saved)); } catch (e) {} }
+
+  document.querySelectorAll('.try').forEach(box => {
+    const n = +box.dataset.n, d = PYDATA[n];
+    const ed = box.querySelector('.pyedit'), out = box.querySelector('.pyout'), status = box.querySelector('.pystatus');
+    const runBtn = box.querySelector('[data-run]');
+    ed.value = saved[n] != null ? saved[n] : d.starter;
+    ed.rows = Math.min(24, Math.max(7, ed.value.split('\n').length + 1));
+    ed.addEventListener('input', () => remember(n, ed.value));
+    ed.addEventListener('keydown', e => {
+      if (e.key === 'Tab' && !e.shiftKey) {
+        e.preventDefault();
+        const a = ed.selectionStart, b = ed.selectionEnd;
+        ed.setRangeText('    ', a, b, 'end'); remember(n, ed.value);
+      }
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); run(); }
+    });
+    box.querySelector('[data-reset]').addEventListener('click', () => { ed.value = d.starter; remember(n, ed.value); out.hidden = true; status.textContent = ''; });
+    box.querySelector('[data-answer]').addEventListener('click', () => {
+      if (ed.value !== d.starter && ed.value !== d.answer && !confirm('Replace your code with the answer? (Start over brings back the empty exercise.)')) return;
+      ed.value = d.answer; remember(n, ed.value); ed.rows = Math.min(24, Math.max(7, ed.value.split('\n').length + 1));
+    });
+    runBtn.addEventListener('click', run);
+
+    async function run() {
+      runBtn.disabled = true; out.hidden = false; out.textContent = '';
+      let py;
+      try {
+        if (!pyReady) status.textContent = 'Loading Python for the browser (first time only, about 10 s)…';
+        py = await loadPy();
+        if (d.numpy && !npReady) { status.textContent = 'Loading numpy (first time only)…'; npReady = py.loadPackage('numpy'); }
+        if (d.numpy) await npReady;
+      } catch (e) {
+        status.textContent = '';
+        out.innerHTML = '<span class="fail">Couldn\'t load Python in the page.</span>\nIt downloads from cdn.jsdelivr.net, so it needs internet. You can still copy the code into a file and run it with python3 in your terminal.';
+        runBtn.disabled = false; return;
+      }
+      status.textContent = 'Running…';
+      let text = '';
+      py.setStdout({ batched: t => { text += t + '\n'; } });
+      py.setStderr({ batched: t => { text += t + '\n'; } });
+      const ns = py.globals.get('dict')();
+      let html = '';
+      try {
+        await py.runPythonAsync(ed.value, { globals: ns });
+        html = esc(text);
+        text = '';
+        try {
+          await py.runPythonAsync(d.check, { globals: ns });
+          html += (html && !html.endsWith('\n') ? '\n' : '') + `<span class="pass">${esc(text.trim())}</span>`;
+          markLesson('py-' + (n + 1), true);
+        } catch (e) {
+          const why = lastLine(cleanTrace(e.message)).replace(/^AssertionError:?\s*/, '');
+          html += `\n<span class="fail">✗ Not quite yet.</span> The check didn't pass${why && !/^AssertionError$/.test(why) ? ': ' + esc(why) : ''}.\nKeep going, or press "Load the answer" to compare.`;
+        }
+      } catch (e) {
+        html = esc(text) + `<span class="fail">Your code stopped with an error:</span>\n${esc(cleanTrace(e.message))}`;
+      } finally {
+        ns.destroy();
+      }
+      out.innerHTML = html.trim() || '(no output)';
+      status.textContent = '';
+      runBtn.disabled = false;
+    }
+  });
+
+  // lesson progress (per viewer)
+  const LKEY = 'tp-py-done';
+  let ldone = {};
+  try { ldone = JSON.parse(localStorage.getItem(LKEY) || '{}') || {}; } catch (e) { ldone = {}; }
+  function drawLessons() {
+    const total = PYDATA.length, n = Object.values(ldone).filter(Boolean).length;
+    document.getElementById('pyProgress').textContent = `${n} of ${total}`;
+    document.getElementById('pyBar').style.width = (100 * n / total) + '%';
+    document.querySelectorAll('[data-lesson]').forEach(cb => { cb.checked = !!ldone[cb.dataset.lesson]; });
+    document.querySelectorAll('.ldone').forEach(sp => { sp.textContent = ldone[sp.dataset.for] ? '✓' : ''; });
+  }
+  function markLesson(id, on) {
+    ldone[id] = on;
+    try { localStorage.setItem(LKEY, JSON.stringify(ldone)); } catch (e) {}
+    drawLessons();
+  }
+  document.querySelectorAll('[data-lesson]').forEach(cb => cb.addEventListener('change', () => markLesson(cb.dataset.lesson, cb.checked)));
+  drawLessons();
+
+  // ---------- reading progress (per viewer, optional) ----------
+  const KEY = 'tp-guide-read';
+  let read = {};
+  try { read = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { read = {}; }
+  function markToc() {
+    document.querySelectorAll('#toc a').forEach(a => {
+      const id = a.getAttribute('href').slice(1);
+      let s = a.querySelector('.done');
+      if (read[id] && !s) { s = document.createElement('span'); s.className = 'done'; s.textContent = '✓'; s.setAttribute('aria-label', 'read'); a.appendChild(s); }
+      if (!read[id] && s) s.remove();
+    });
+  }
+  document.querySelectorAll('[data-read]').forEach(cb => {
+    cb.checked = !!read[cb.dataset.read];
+    cb.addEventListener('change', () => {
+      read[cb.dataset.read] = cb.checked;
+      try { localStorage.setItem(KEY, JSON.stringify(read)); } catch (e) {}
+      markToc();
+    });
+  });
+  markToc();
+
+  // ---------- chapter highlight on scroll ----------
+  const links = [...document.querySelectorAll('#toc a')];
+  const secs = links.map(a => document.querySelector(a.getAttribute('href')));
+  function onScroll() {
+    let cur = 0;
+    secs.forEach((s, i) => { if (s.getBoundingClientRect().top < 140) cur = i; });
+    links.forEach((a, i) => a.classList.toggle('on', i === cur));
+  }
+  addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // ---------- demo 1: skinning ----------
+  const sc = document.getElementById('skinCanvas'), sx = sc.getContext('2d');
+  let method = 'lbs';
+  const bend = document.getElementById('bend'), spread = document.getElementById('spread');
+  const mL = document.getElementById('mLBS'), mC = document.getElementById('mCOR');
+  [mL, mC].forEach(b => b.addEventListener('click', () => {
+    method = b === mL ? 'lbs' : 'cor';
+    mL.setAttribute('aria-pressed', method === 'lbs'); mC.setAttribute('aria-pressed', method === 'cor'); drawSkin();
+  }));
+  bend.addEventListener('input', drawSkin); spread.addEventListener('input', drawSkin);
+
+  function mix(a, b, t) { // hex colours
+    const pa = a.match(/\w\w/g).map(h => parseInt(h, 16)), pb = b.match(/\w\w/g).map(h => parseInt(h, 16));
+    return `rgb(${pa.map((v, i) => Math.round(v + (pb[i] - v) * t)).join(',')})`;
+  }
+  function area(pts) { let s = 0; for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; s += a[0] * b[1] - b[0] * a[1]; } return Math.abs(s) / 2; }
+
+  function drawSkin() {
+    const W = sc.width, H = sc.height;
+    const L = 230, h = 46, x0 = 120, y0 = 262;
+    const th = -(+bend.value) * Math.PI / 180, s = +spread.value;
+    const e = [x0 + L, y0];
+    const N = 60;
+    const top = [], bot = [];
+    for (let i = 0; i <= N; i++) { const x = x0 + 2 * L * i / N; top.push([x, y0 - h]); bot.push([x, y0 + h]); }
+    const rest = top.concat(bot.reverse());
+    const wOf = x => { const t = Math.min(1, Math.max(0, (x - (x0 + L - s)) / (2 * s))); return t * t * (3 - 2 * t); };
+    const rot = (p, c, a) => { const dx = p[0] - c[0], dy = p[1] - c[1], co = Math.cos(a), si = Math.sin(a); return [c[0] + co * dx - si * dy, c[1] + si * dx + co * dy]; };
+    const posed = rest.map(p => {
+      const w = wOf(p[0]);
+      if (method === 'lbs') {
+        const q = rot(p, e, th);
+        return [p[0] * (1 - w) + q[0] * w, p[1] * (1 - w) + q[1] * w];
+      }
+      const c = [p[0], y0];                                 // center of rotation: on the bone axis
+      const cq = rot(c, e, th);
+      const cc = [c[0] * (1 - w) + cq[0] * w, c[1] * (1 - w) + cq[1] * w];
+      const a = w * th;
+      const dx = p[0] - c[0], dy = p[1] - c[1];
+      return [cc[0] + Math.cos(a) * dx - Math.sin(a) * dy, cc[1] + Math.sin(a) * dx + Math.cos(a) * dy];
+    });
+    sx.clearRect(0, 0, W, H);
+    // rest outline
+    sx.strokeStyle = css('--line'); sx.lineWidth = 2; sx.setLineDash([6, 6]);
+    sx.beginPath(); rest.forEach((p, i) => i ? sx.lineTo(p[0], p[1]) : sx.moveTo(p[0], p[1])); sx.closePath(); sx.stroke(); sx.setLineDash([]);
+    // posed fill
+    sx.fillStyle = css('--surface'); sx.strokeStyle = css('--ink'); sx.lineWidth = 2;
+    sx.beginPath(); posed.forEach((p, i) => i ? sx.lineTo(p[0], p[1]) : sx.moveTo(p[0], p[1])); sx.closePath(); sx.fill(); sx.stroke();
+    // weight dots
+    const cPy = css('--py'), cAc = css('--accent');
+    const toHex = c => { if (c.startsWith('#')) return c.length === 4 ? '#' + [...c.slice(1)].map(x => x + x).join('') : c; return '#888888'; };
+    posed.forEach((p, i) => { const w = wOf(rest[i][0]); sx.fillStyle = mix(toHex(cPy), toHex(cAc), w); sx.beginPath(); sx.arc(p[0], p[1], 4, 0, 7); sx.fill(); });
+    // bones
+    const wr = rot([x0 + 2 * L, y0], e, th);
+    sx.strokeStyle = css('--muted'); sx.lineWidth = 6; sx.lineCap = 'round';
+    sx.beginPath(); sx.moveTo(x0, y0); sx.lineTo(e[0], e[1]); sx.lineTo(wr[0], wr[1]); sx.stroke();
+    sx.fillStyle = css('--ink'); [[x0, y0], e].forEach(p => { sx.beginPath(); sx.arc(p[0], p[1], 7, 0, 7); sx.fill(); });
+    sx.font = '14px ' + css('--mono'); sx.fillStyle = css('--muted');
+    sx.fillText('shoulder', x0 - 30, y0 - h - 16); sx.fillText('elbow', e[0] - 20, y0 - h - 16);
+    sx.fillText('upper arm', x0 + 60, y0 + 6);
+    const kept = area(posed) / area(rest) * 100;
+    document.getElementById('skinReadout').innerHTML = `Area kept: <span class="${kept < 93 ? 'bad' : 'good'}">${kept.toFixed(1)}%</span>`;
+  }
+  drawSkin();
+
+  // ---------- demo 2: voxels ----------
+  const vc = document.getElementById('voxCanvas'), vx = vc.getContext('2d');
+  const grow = document.getElementById('grow'), blurN = document.getElementById('blurN');
+  const showVox = document.getElementById('showVox'), sep = document.getElementById('sepFingers');
+  [grow, blurN, showVox, sep].forEach(el => el.addEventListener('input', drawVox));
+  const CELL = 12, GW = Math.floor(900 / CELL), GH = Math.floor(460 / CELL);
+  // anatomy, in canvas px: ellipses (muscles), capsules (bones)
+  const ELL = [[300, 220, 120, 70], [470, 250, 95, 60], [380, 300, 80, 40]];
+  const CAPS = [[230, 240, 560, 260, 12], [620, 210, 820, 185, 10], [620, 290, 820, 315, 10]]; // forearm bone, two fingers
+  function insideAnat(px, py, which) {
+    if (which === 'body' || which === undefined) {
+      for (const [cx, cy, rx, ry] of ELL) if (((px - cx) / rx) ** 2 + ((py - cy) / ry) ** 2 <= 1) return true;
+      if (capD(px, py, CAPS[0]) <= CAPS[0][4]) return true;
+      if (which === 'body') return false;
+    }
+    if (which === undefined || which === 'f1') if (capD(px, py, CAPS[1]) <= CAPS[1][4]) return true;
+    if (which === undefined || which === 'f2') if (capD(px, py, CAPS[2]) <= CAPS[2][4]) return true;
+    return false;
+  }
+  function capD(px, py, [ax, ay, bx, by]) {
+    const dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)));
+    return Math.hypot(px - ax - t * dx, py - ay - t * dy);
+  }
+  function solid(which, r) {
+    const occ = new Uint8Array(GW * GH);
+    for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) if (insideAnat((i + .5) * CELL, (j + .5) * CELL, which)) occ[j * GW + i] = 1;
+    if (!r) return occ;
+    const out = new Uint8Array(GW * GH);
+    for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
+      if (!occ[j * GW + i]) continue;
+      for (let dj = -r; dj <= r; dj++) for (let di = -r; di <= r; di++) {
+        if (di * di + dj * dj > r * r + .5) continue;
+        const a = i + di, b = j + dj; if (a >= 0 && b >= 0 && a < GW && b < GH) out[b * GW + a] = 1;
+      }
+    }
+    return out;
+  }
+  function blurF(f, n) {
+    for (let k = 0; k < n; k++) {
+      const g = new Float32Array(f.length);
+      for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) {
+        let s = 0, c = 0;
+        for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const a = i + di, b = j + dj; if (a >= 0 && b >= 0 && a < GW && b < GH) { s += f[b * GW + a]; c++; } }
+        g[j * GW + i] = s / c;
+      }
+      f = g;
+    }
+    return f;
+  }
+  function contour(f, color) {
+    // marching squares on cell centres, iso 0.5
+    vx.strokeStyle = color; vx.lineWidth = 2.5; vx.beginPath();
+    const P = (i, j) => [(i + .5) * CELL, (j + .5) * CELL];
+    for (let j = 0; j < GH - 1; j++) for (let i = 0; i < GW - 1; i++) {
+      const v = [f[j * GW + i], f[j * GW + i + 1], f[(j + 1) * GW + i + 1], f[(j + 1) * GW + i]];
+      const c = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]];
+      const pts = [];
+      for (let k = 0; k < 4; k++) {
+        const a = v[k], b = v[(k + 1) % 4];
+        if ((a > .5) !== (b > .5)) {
+          const t = (.5 - a) / (b - a), A = P(...c[k]), B = P(...c[(k + 1) % 4]);
+          pts.push([A[0] + t * (B[0] - A[0]), A[1] + t * (B[1] - A[1])]);
+        }
+      }
+      if (pts.length >= 2) { vx.moveTo(pts[0][0], pts[0][1]); vx.lineTo(pts[1][0], pts[1][1]); }
+      if (pts.length === 4) { vx.moveTo(pts[2][0], pts[2][1]); vx.lineTo(pts[3][0], pts[3][1]); }
+    }
+    vx.stroke();
+  }
+  function drawVox() {
+    const r = +grow.value, nb = +blurN.value;
+    vx.clearRect(0, 0, vc.width, vc.height);
+    const groups = sep.checked ? ['body', 'f1', 'f2'] : [undefined];
+    const fields = groups.map(g => blurF(Float32Array.from(solid(g, r)), nb));
+    // voxels
+    if (showVox) {
+      const occAll = new Uint8Array(GW * GH);
+      groups.forEach(g => { const s = solid(g, r); for (let k = 0; k < s.length; k++) occAll[k] |= s[k]; });
+      vx.fillStyle = css('--py-soft');
+      for (let j = 0; j < GH; j++) for (let i = 0; i < GW; i++) if (occAll[j * GW + i]) vx.fillRect(i * CELL + 1, j * CELL + 1, CELL - 2, CELL - 2);
+    }
+    // anatomy
+    vx.fillStyle = css('--muted'); vx.globalAlpha = .55;
+    for (const [cx, cy, rx, ry] of ELL) { vx.beginPath(); vx.ellipse(cx, cy, rx, ry, 0, 0, 7); vx.fill(); }
+    vx.globalAlpha = 1; vx.strokeStyle = css('--ink'); vx.lineCap = 'round';
+    for (const [ax, ay, bx, by, rr] of CAPS) { vx.lineWidth = rr * 2; vx.beginPath(); vx.moveTo(ax, ay); vx.lineTo(bx, by); vx.stroke(); }
+    fields.forEach(f => contour(f, css('--accent')));
+    // fused?
+    const f = fields.length === 1 ? fields[0] : null;
+    let fused = false;
+    if (f) { const mi = Math.round(720 / CELL), mj = Math.round(250 / CELL); fused = f[mj * GW + mi] > .5; }
+    vx.font = '13px ' + css('--mono'); vx.fillStyle = css('--muted');
+    vx.fillText('muscle', 270, 225); vx.fillText('bone', 400, 236); vx.fillText('fingers', 700, 160);
+    document.getElementById('voxReadout').innerHTML = `Skin layer ${r * 3} mm (at 3 mm voxels) · fingers ${fused ? '<span class="bad">fused</span>' : '<span class="good">separate</span>'}`;
+  }
+  drawVox();
+
+  // ---------- demo 3: muscle contraction ----------
+  const mc = document.getElementById('musCanvas'), mx = mc.getContext('2d');
+  const mBend = document.getElementById('mBend'), mFlex = document.getElementById('mFlex');
+  [mBend, mFlex].forEach(el => el.addEventListener('input', drawMus));
+  const S0 = [150, 250], E0 = [430, 250];
+  function muscleAt(O, I, R) { return { O, I, L: Math.hypot(I[0] - O[0], I[1] - O[1]), R }; }
+  function attach(b) {
+    const a = -b * Math.PI / 180, d = [Math.cos(a), Math.sin(a)], n = [d[1], -d[0]];
+    return {
+      d, n,
+      bi: muscleAt([S0[0] + 30, S0[1] - 30], [E0[0] + d[0] * 40 + n[0] * 14, E0[1] + d[1] * 40 + n[1] * 14], 34),
+      tri: muscleAt([S0[0] + 30, S0[1] + 30], [E0[0] - d[0] * 14 - n[0] * 18, E0[1] - d[1] * 14 - n[1] * 18], 28),
+    };
+  }
+  const REST = attach(0);
+  function drawBelly(m, L0, flex, color) {
+    const s = m.L / L0, k = Math.min(1.8, Math.max(0.6, 1 / Math.sqrt(s))) * (1 + 0.35 * flex);
+    const ux = (m.I[0] - m.O[0]) / m.L, uy = (m.I[1] - m.O[1]) / m.L, px = -uy, py = ux;
+    const N = 40, left = [], right = [];
+    for (let i = 0; i <= N; i++) {
+      const t = i / N, w = Math.pow(Math.sin(Math.PI * t), 0.8), r = m.R * w * k * 0.5 + 2;
+      const cx = m.O[0] + ux * m.L * t, cy = m.O[1] + uy * m.L * t;
+      left.push([cx + px * r, cy + py * r]); right.push([cx - px * r, cy - py * r]);
+    }
+    mx.fillStyle = color; mx.globalAlpha = 0.85; mx.beginPath();
+    left.concat(right.reverse()).forEach((p, i) => i ? mx.lineTo(p[0], p[1]) : mx.moveTo(p[0], p[1]));
+    mx.closePath(); mx.fill(); mx.globalAlpha = 1;
+    // tendons
+    mx.fillStyle = css('--ink'); [m.O, m.I].forEach(p => { mx.beginPath(); mx.arc(p[0], p[1], 4, 0, 7); mx.fill(); });
+    return { s, k };
+  }
+  function drawMus() {
+    const b = +mBend.value, flex = +mFlex.value / 100, A = attach(b);
+    mx.clearRect(0, 0, mc.width, mc.height);
+    const W = [E0[0] + A.d[0] * 270, E0[1] + A.d[1] * 270];
+    mx.strokeStyle = css('--muted'); mx.lineWidth = 12; mx.lineCap = 'round';
+    mx.beginPath(); mx.moveTo(S0[0], S0[1]); mx.lineTo(E0[0], E0[1]); mx.lineTo(W[0], W[1]); mx.stroke();
+    const bi = drawBelly(A.bi, REST.bi.L, flex, css('--accent'));
+    const tr = drawBelly(A.tri, REST.tri.L, flex * 0.5, css('--py'));
+    mx.fillStyle = css('--ink'); [S0, E0].forEach(p => { mx.beginPath(); mx.arc(p[0], p[1], 8, 0, 7); mx.fill(); });
+    mx.font = '13px ' + css('--mono'); mx.fillStyle = css('--muted');
+    mx.fillText('shoulder', S0[0] - 34, S0[1] + 58); mx.fillText('elbow', E0[0] - 16, E0[1] + 58);
+    const pct = v => (v >= 0 ? '+' : '') + Math.round(v * 100) + '%';
+    document.getElementById('musReadout').innerHTML =
+      `Biceps: length ${Math.round(bi.s * 100)}%, belly <span class="${bi.k >= 1 ? 'good' : 'bad'}">${pct(bi.k - 1)}</span> · ` +
+      `Triceps: length ${Math.round(tr.s * 100)}%, belly <span class="${tr.k >= 1 ? 'good' : 'bad'}">${pct(tr.k - 1)}</span>`;
+  }
+  drawMus();
+
+  // redraw demos when the theme flips
+  try { matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { drawSkin(); drawVox(); drawMus(); }); } catch (e) {}
+  new MutationObserver(() => { drawSkin(); drawVox(); drawMus(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script>

@@ -1,0 +1,6 @@
+.venv/
+anatomy-src/
+__pycache__/
+.DS_Store
+.lesson-test/
+.shots/
